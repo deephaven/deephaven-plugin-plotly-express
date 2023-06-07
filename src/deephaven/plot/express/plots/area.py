@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from functools import partial
+from time import sleep
+
 from plotly import express as px
 
 from deephaven.table import Table
 
-from ._private_utils import default_callback, process_args
+from ._private_utils import default_callback, process_args, layer, partition_generator, process_partitions
 from ..deephaven_figure import generate_figure, DeephavenFigure
 
 
@@ -12,13 +15,21 @@ def area(
         table: Table = None,
         x: str | list[str] = None,
         y: str | list[str] = None,
+        plot_by: str | list[str] = None,
+        line_group: str | list[str] = None,
+        color: str | list[str] = None,
+        pattern_shape: str | list[str] = None,
+        symbol: str | list[str] = None,
         size: str | list[str] = None,
         text: str | list[str] = None,
         hover_name: str | list[str] = None,
         labels: dict[str, str] = None,
         color_discrete_sequence: list[str] = None,
+        color_discrete_map: dict[str, str] = None,
         pattern_shape_sequence: list[str] = None,
+        pattern_shape_map: dict[str, str] = None,
         symbol_sequence: list[str] = None,
+        symbol_map: dict[str, str] = None,
         size_sequence: list[int] = None,
         xaxis_sequence: list[str] = None,
         yaxis_sequence: list[str] = None,
@@ -135,8 +146,22 @@ def area(
     """
     args = locals()
 
+    # partitioned args must be first so colors are properly reassigned
+    partitioned = process_partitions(args)
+    # sleep(10)
+
+    partitioned_args = partition_generator(args, partitioned)
+
     update_wrapper = process_args(args, {"area", "line"})
 
-    return update_wrapper(
-        generate_figure(draw=px.area, call_args=args)
-    )
+    draw_figure = partial(generate_figure, draw=px.area)
+
+    trace_generator = None
+    figs = []
+    for arg in partitioned_args:
+        fig = draw_figure(call_args=args, trace_generator=trace_generator)
+        if not trace_generator:
+            trace_generator = fig.trace_generator
+        figs.append(fig)
+
+    return update_wrapper(layer(*figs))

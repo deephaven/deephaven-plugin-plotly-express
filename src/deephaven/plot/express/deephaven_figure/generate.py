@@ -93,7 +93,6 @@ CUSTOM_ARGS = {
     "labels",
     "hist_val_name",
     "pivot_vars",
-    # "rangemode"
 }
 
 # these are columns that are "attached" sequentially to the traces
@@ -225,10 +224,12 @@ def split_args(
                 custom_call_args[arg] = val if \
                     (isinstance(val[0], list) or val[0] is None) else [val]
             elif any([arg in mappable for mappable in
-                      [ATTACHED_UPDATE_MAP, SEQUENCE_ARGS_MAP, CUSTOM_LIST_ARGS]]):
+                      [ATTACHED_UPDATE_MAP, CUSTOM_LIST_ARGS]]):
                 # some of these args should always be lists, so the check is
                 # redundant, but useful if a single valid value is passed
                 custom_call_args[arg] = val if isinstance(val, list) else [val]
+            elif arg in SEQUENCE_ARGS_MAP:
+                custom_call_args[arg] = val
             elif arg in DATA_LIST_ARGS:
                 new_call_args[arg] = val if isinstance(val, list) else [val]
             else:
@@ -450,7 +451,9 @@ def get_domain(
 
 def sequence_generator(
         arg: str,
-        ls: list[str]
+        ls: str | list[str],
+        map=None,
+        keys=None,
 ) -> Generator[tuple[str, str]]:
     """Loops over the provided list to update the argument provided
 
@@ -461,6 +464,21 @@ def sequence_generator(
     Yields:
       tuple[str, str]: A tuple of (the name from SEQUENCE_ARGS_MAP, the value)
     """
+    ls = ls if isinstance(ls, list) else [ls]
+    if keys:
+        cycled = cycle(ls)
+        found = {}
+        for val in keys:
+            if val not in found:
+                new_val = next(cycled)
+                if map and val in map:
+                    new_val = map[val]
+                elif map and len(val) == 1 and val[0] in map:
+                    new_val = map[val[0]]
+                found[val] = new_val
+            yield SEQUENCE_ARGS_MAP[arg], found[val]
+
+    # this should never be hit if keys are specified
     for val in cycle(ls):
         yield SEQUENCE_ARGS_MAP[arg], val
 
@@ -610,7 +628,11 @@ def handle_custom_args(
                 trace_generators.append(attached_generator(arg, val))
 
             elif arg in SEQUENCE_ARGS_MAP:
-                trace_generators.append(sequence_generator(arg, val))
+                if not isinstance(val, dict):
+                    val = {"ls": val}
+                val["arg"] = arg
+
+                trace_generators.append(sequence_generator(**val))
 
             elif arg == "log_x":
                 last_x_axis = max(1, last_x_axis)
@@ -990,7 +1012,7 @@ def create_hover_and_axis_titles(
     any level.
     Plotly express still handles these cases, with no legend as there is no
     shared axis. The column names are on the axis titles (unless overriden).
-    
+
     Histogram is an exception to the above. If "hist_val_name" is specified,
     the value of this argument ends up on the other axis than the one specified
     (such as the y-axis if the x-axis is specified). Otherwise, there is a

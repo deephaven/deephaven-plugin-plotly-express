@@ -8,9 +8,18 @@ import plotly.express as px
 from plotly.graph_objects import Figure
 
 from deephaven.table import Table
+from deephaven import pandas as dhpd
 
 from ..deephaven_figure import generate_figure, DeephavenFigure
 from ..shared import get_unique_names
+
+PARTITION_ARGS = {
+    "plot_by": None,
+    "line_group": None, # this will still use the discrete
+    "color": ("color_discrete_sequence", "color_discrete_map"),
+    "pattern_shape": ("pattern_shape_sequence", "pattern_shape_map"),
+    "symbol": ("symbol_sequence", "symbol_map")
+}
 
 
 def default_callback(
@@ -935,3 +944,54 @@ class SyncDict:
         """
         for k in self.pop_set:
             self.d.pop(k)
+
+def get_partition_key_column_tuples(
+key_column_table, columns
+):
+    list_columns = []
+    for column in columns:
+        list_columns.append(key_column_table[column].tolist())
+
+    return list(zip(*list_columns))
+
+
+def process_partitions(
+        args
+):
+    partitions = set()
+    partition_map = {}
+    for arg, val in args.items():
+        if val and arg in PARTITION_ARGS:
+            partition_map[arg] = val
+            if isinstance(arg, list):
+                partitions.update([col for col in val])
+            else:
+                partitions.add(val)
+
+    if partitions:
+        partitioned = args["table"].partition_by(list(partitions))
+        key_column_table = dhpd.to_pandas(partitioned.table.select_distinct(partitioned.key_columns))
+        for arg, val in partition_map.items():
+            if isinstance(PARTITION_ARGS[arg], tuple):
+                # replace the sequence with the sequence, map and distinct keys
+                # so they can be easily used together
+                keys = get_partition_key_column_tuples(key_column_table, val if isinstance(val, list) else [val])
+                sequence, map_ = PARTITION_ARGS[arg]
+                args[sequence] = {
+                    "ls": args[sequence],
+                    "map": args[map_],
+                    "keys": keys
+                }
+                args.pop(arg)
+        return partitioned
+
+
+def partition_generator(
+        args, partitioned
+):
+    if partitioned:
+        for table in partitioned.constituent_tables:
+            args["table"] = table
+            yield args
+    else:
+        yield args
