@@ -148,7 +148,6 @@ def area(
 
     # partitioned args must be first so colors are properly reassigned
     partitioned = process_partitions(args)
-    # sleep(10)
 
     partitioned_args = partition_generator(args, partitioned)
 

@@ -42,6 +42,7 @@ DATA_ARGS = {
     "names", "values",
     "parents", "ids",
     "x_start", "x_end",
+    #"color"
 }
 DATA_ARGS.update(DATA_LIST_ARGS)
 
@@ -105,7 +106,11 @@ ATTACHED_UPDATE_MAP = {
     "error_z_minus": "error_z_arrayminus",
     "size": "marker_size",
     "text": "text",
-    "hover_name": "hovertext"
+    "hover_name": "hovertext",
+    "attached_pattern_shape_area": "fillpattern_shape",
+    "attached_pattern_shape_bar": "marker_pattern_shape",
+    "attached_color": "line_color",
+    "attached_line": "marker_color",
 }
 
 
@@ -464,6 +469,8 @@ def sequence_generator(
     Yields:
       tuple[str, str]: A tuple of (the name from SEQUENCE_ARGS_MAP, the value)
     """
+    print(locals())
+
     ls = ls if isinstance(ls, list) else [ls]
     if keys:
         cycled = cycle(ls)
@@ -631,7 +638,6 @@ def handle_custom_args(
                 if not isinstance(val, dict):
                     val = {"ls": val}
                 val["arg"] = arg
-
                 trace_generators.append(sequence_generator(**val))
 
             elif arg == "log_x":

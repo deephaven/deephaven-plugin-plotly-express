@@ -15,7 +15,7 @@ from ..shared import get_unique_names
 
 PARTITION_ARGS = {
     "plot_by": None,
-    "line_group": None, # this will still use the discrete
+    "line_group": None,  # this will still use the discrete
     "color": ("color_discrete_sequence", "color_discrete_map"),
     "pattern_shape": ("pattern_shape_sequence", "pattern_shape_map"),
     "symbol": ("symbol_sequence", "symbol_map")
@@ -794,6 +794,17 @@ def calculate_mode(
     return "+".join(modes)
 
 
+def append_prefixes(
+        args,
+        prefixes,
+        sync_dict
+):
+    for arg in args:
+        for prefix in prefixes:
+            if arg in sync_dict.d:
+                sync_dict.d[f"{arg}_{prefix}"] = sync_dict.will_pop(arg)
+
+
 def apply_args_groups(
         args: dict[str, any],
         groups: set[str]
@@ -811,42 +822,59 @@ def apply_args_groups(
 
     if "scatter" in groups:
         args["mode"] = calculate_mode("markers", args)
-        args["color_discrete_sequence_marker"] = sync_dict.will_pop(
-            "color_discrete_sequence")
+        append_prefixes(
+            ["color_discrete_sequence", "attached_color"],
+            ["marker"],
+            sync_dict
+        )
 
     if "line" in groups:
         args["mode"] = calculate_mode("lines", args)
-        args["color_discrete_sequence_marker"] = sync_dict.will_pop(
-            "color_discrete_sequence")
-        args["color_discrete_sequence_line"] = sync_dict.will_pop(
-            "color_discrete_sequence")
+        append_prefixes(
+            ["color_discrete_sequence", "attached_color"],
+            ["marker", "line"],
+            sync_dict
+        )
 
     if "ecdf" in groups:
         # ecdf should be forced to lines even if both "lines" and "markers" are False
         base_mode = "lines" if args["lines"] or not args["markers"] else "markers"
         args["mode"] = calculate_mode(base_mode, args)
-        args["color_discrete_sequence_marker"] = sync_dict.will_pop(
-            "color_discrete_sequence")
-        args["color_discrete_sequence_line"] = sync_dict.will_pop(
-            "color_discrete_sequence")
+        append_prefixes(
+            ["color_discrete_sequence", "attached_color"],
+            ["marker", "line"],
+            sync_dict
+        )
 
     if 'scene' in groups:
         for arg in ["range_x", "range_y", "range_z", "log_x", "log_y", "log_z"]:
             args[arg + '_scene'] = args.pop(arg)
 
     if 'bar' in groups:
-        args["color_discrete_sequence_marker"] = sync_dict.will_pop(
-            "color_discrete_sequence")
-        args["pattern_shape_sequence_bar"] = sync_dict.will_pop(
-            "pattern_shape_sequence")
+        append_prefixes(
+            ["color_discrete_sequence", "attached_color"],
+            ["marker"],
+            sync_dict
+        )
+        append_prefixes(
+            ["pattern_shape_sequence", "attached_pattern_shape"],
+            ["bar"],
+            sync_dict
+        )
 
     if 'marker' in groups:
-        args["color_discrete_sequence_marker"] = sync_dict.will_pop(
-            "color_discrete_sequence")
+        append_prefixes(
+            ["color_discrete_sequence", "attached_color"],
+            ["marker"],
+            sync_dict
+        )
 
     if 'area' in groups:
-        args["pattern_shape_sequence_area"] = sync_dict.will_pop(
-            "pattern_shape_sequence")
+        append_prefixes(
+            ["pattern_shape_sequence", "attached_pattern_shape"],
+            ["area"],
+            sync_dict
+        )
 
     if "webgl" in groups:
         args["render_mode"] = "webgl"
@@ -945,8 +973,9 @@ class SyncDict:
         for k in self.pop_set:
             self.d.pop(k)
 
+
 def get_partition_key_column_tuples(
-key_column_table, columns
+        key_column_table, columns
 ):
     list_columns = []
     for column in columns:
@@ -955,28 +984,120 @@ key_column_table, columns
     return list(zip(*list_columns))
 
 
+NUMERIC_TYPES = {
+    "short",
+    "int",
+    "long",
+    "float",
+    "double",
+}
+
+
+def numeric_column_set(
+        table: Table,
+) -> set[str]:
+    """Check if the provided column is numeric, check if it is in the provided cols,
+    then yield a tuple with the column name and associated null value.
+
+    Args:
+      table: Table: The table to pull columns from
+      cols: set[str]: The column set to check against
+
+    Yields:
+      tuple[str, str]: tuple of the form (column name, associated null value)
+    """
+    numeric_cols = set()
+    for col in table.columns:
+        type_ = col.data_type.j_name
+        if type_ in NUMERIC_TYPES:
+            numeric_cols.add(col.name)
+    return numeric_cols
+
+
+def handle_plot_by_arg(
+        args,
+        arg,
+        val
+):
+    numeric_cols = numeric_column_set(args["table"])
+    plot_by_cols = args.get("plot_by", "cols")
+
+    if arg == "color":
+        map_ = "color_discrete_map"
+        if map_ == "by":
+            args["color_by"] = args.pop("color")
+        elif map_ == "identity":
+            args["attached_color"] = args.pop["attached_color"]
+            # attached_color
+        elif (isinstance(val, str) or len(val) == 1) and val in numeric_cols:
+            # just keep the argument in place so it can be passed to plotly
+            # express directly
+            pass
+        elif val:
+            args["color_by"] = args.pop("color")
+        elif plot_by_cols:
+            # this needs to be last as setting "color "in any sense will override
+            args["color_by"] = plot_by_cols
+
+    elif arg == "size":
+        # size is numer
+        map_ = "size_map"
+
+        if (isinstance(str, val) or len(val) == 1) and val in numeric_cols and map_ != "by":
+            pass
+        elif plot_by_cols:
+            args["size_by"] = plot_by_cols
+
+    elif arg in {"pattern_shape", "symbol"}:
+        map_ = PARTITION_ARGS[arg][1]
+        if map_ == "identity":
+            args[f"{arg}_attached"] = plot_by_cols
+        else:
+            args[f"{arg}_by"] = args.pop(arg)
+
+    return f"{arg}_by", args.get(f"{arg}_by", None)
+
+
 def process_partitions(
         args
 ):
-    partitions = set()
+    partition_cols = set()
     partition_map = {}
-    for arg, val in args.items():
+    for arg, val in list(args.items()):
         if val and arg in PARTITION_ARGS:
-            partition_map[arg] = val
-            if isinstance(arg, list):
-                partitions.update([col for col in val])
-            else:
-                partitions.add(val)
+            # partition_map[arg] = val
+            arg_by, cols = handle_plot_by_arg(args, arg, val)
+            if cols:
+                partition_map[arg_by] = cols
+                if isinstance(cols, list):
+                    partition_cols.update([col for col in cols])
+                else:
+                    partition_cols.add(cols)
 
-    if partitions:
-        partitioned = args["table"].partition_by(list(partitions))
+    # TODO:
+    # cases: numeric, factor - color_by (controlled by "by" in map or plot_by)
+    # numeric, non factor - color (passed to plotly express)
+    # identity - attached_color
+    # other, factor - color_by
+
+    # TODO: size
+    # numeric: attached_size
+    # other: size_by (unless "by" is specified in map or plot_by)
+
+    # TODO general: symbol, pattern
+    # any type: plot_by
+    # identity - attached_whatever
+
+    if partition_cols:
+        partitioned = args["table"].partition_by(list(partition_cols))
         key_column_table = dhpd.to_pandas(partitioned.table.select_distinct(partitioned.key_columns))
         for arg, val in partition_map.items():
-            if isinstance(PARTITION_ARGS[arg], tuple):
+            # remove "by" from arg
+            if isinstance(PARTITION_ARGS[arg[:-3]], tuple):
                 # replace the sequence with the sequence, map and distinct keys
                 # so they can be easily used together
                 keys = get_partition_key_column_tuples(key_column_table, val if isinstance(val, list) else [val])
-                sequence, map_ = PARTITION_ARGS[arg]
+                sequence, map_ = PARTITION_ARGS[arg[:-3]]
                 args[sequence] = {
                     "ls": args[sequence],
                     "map": args[map_],
