@@ -4,7 +4,7 @@ import math
 
 from plotly.graph_objs import Figure
 
-from ._private_utils import layer
+from ._layer import layer
 from .. import DeephavenFigure
 
 

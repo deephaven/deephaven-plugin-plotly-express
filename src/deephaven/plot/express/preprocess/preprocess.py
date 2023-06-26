@@ -5,7 +5,7 @@ from collections.abc import Generator
 from deephaven.table import Table
 from deephaven import agg, empty_table, new_table
 from deephaven.column import long_col
-from deephaven.time import nanos_to_millis, diff_nanos
+#from deephaven.time import nanos_to_millis, diff_nanos
 from deephaven.updateby import cum_sum
 
 from ..shared import get_unique_names

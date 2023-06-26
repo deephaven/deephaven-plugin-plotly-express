@@ -94,6 +94,7 @@ CUSTOM_ARGS = {
     "labels",
     "hist_val_name",
     "pivot_vars",
+    "current_partition"
 }
 
 # these are columns that are "attached" sequentially to the traces
@@ -469,8 +470,6 @@ def sequence_generator(
     Yields:
       tuple[str, str]: A tuple of (the name from SEQUENCE_ARGS_MAP, the value)
     """
-    print(locals())
-
     ls = ls if isinstance(ls, list) else [ls]
     if keys:
         cycled = cycle(ls)
@@ -722,8 +721,8 @@ def relabel_columns(
         list_var_cols: list[str],
         pivot_vars: dict[str, str],
         types: set[str],
-        current_col: str
-        # partitions: dict[str, str],
+        current_col: str,
+        current_partitions: list[tuple[str, str]]
 ) -> str:
     """Relabel any columns found in data
 
@@ -749,11 +748,9 @@ def relabel_columns(
                     current_mapping.pop("x")
                 current_mapping[var] = labels.get(col, col)
 
-        """
-        for col, var in list(partitions.items()):
-            if col in labels:
-                partitions[labels[col]] = partitions.pop(col)
-        """
+        for i, (col, var) in enumerate(current_partitions):
+            new_col, new_var = labels.get(col), labels.get(var)
+            current_partitions[i] = (new_col, new_var)
 
         for base_col, actual_col in pivot_vars.items():
             pivot_vars[base_col] = labels.get(actual_col, actual_col)
@@ -810,7 +807,7 @@ def hover_text_generator(
         current_col: str = None,
         list_var_cols: list[str] = None,
         types: set[str] = None,
-        # partitions: dict[str, str] = None,
+        current_partitions: list[tuple[str, str]] = None
 ) -> Generator[dict[str, any]]:
     """Generate hovertext
 
@@ -853,7 +850,7 @@ def hover_text_generator(
             "name": current_col,
             "legendgroup": current_col,
             "hovertemplate": get_hover_body(
-                hover_mapping[0], pivot_vars, current_col
+                hover_mapping[0], pivot_vars, current_col,
             ),
             "showlegend": True
         }
@@ -875,7 +872,7 @@ def compute_labels(
         list_var_cols: list[str],
         types: set[str],
         labels: dict[str, str],
-        # partitions: dict[str, str] = None,
+        current_partitions: list[tuple[str, str]],
 ) -> str:
     """Compute the labels for this chart, relabling the axis and hovertext.
     Mostly, labels are taken directly from the labels with the exception of
@@ -912,7 +909,8 @@ def compute_labels(
         list_var_cols,
         pivot_vars,
         types,
-        current_col
+        current_col,
+        current_partitions
     )
 
 
@@ -1048,6 +1046,8 @@ def create_hover_and_axis_titles(
     labels = custom_call_args.get("labels", None)
     hist_val_name = custom_call_args.get("hist_val_name", None)
 
+    current_partition = custom_call_args.get("current_partition", None)
+
     if (current_col or list_var_cols) and not pivot_vars:
         pivot_vars = get_unique_names(table, ["variable", "value"])
 
@@ -1056,13 +1056,14 @@ def create_hover_and_axis_titles(
         current_var,
         hist_val_name, pivot_vars,
         current_col, list_var_cols,
-        types, labels
+        types, labels,
+        current_partition
     )
 
     hover_text = hover_text_generator(
         hover_mapping, pivot_vars,
         current_col, list_var_cols,
-        types,
+        types, current_partition
     )
 
     add_axis_titles(

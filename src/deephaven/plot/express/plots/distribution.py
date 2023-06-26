@@ -7,8 +7,9 @@ from plotly import express as px
 
 from deephaven.table import Table
 
-from ._private_utils import default_callback, validate_common_args, preprocess_and_layer, layer, \
-    unsafe_figure_update_wrapper, process_args
+from ._private_utils import validate_common_args, preprocess_and_layer, process_args
+from ._update_wrapper import default_callback, unsafe_figure_update_wrapper
+from ._layer import layer
 from ..deephaven_figure import DeephavenFigure
 from ..preprocess import preprocess_ecdf, create_hist_tables, preprocess_violin
 

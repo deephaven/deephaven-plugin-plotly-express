@@ -6,7 +6,8 @@ from plotly import express as px
 
 from deephaven.table import Table
 
-from ._private_utils import default_callback, validate_common_args, preprocess_and_layer, process_args
+from ._private_utils import validate_common_args, preprocess_and_layer, process_args
+from ._update_wrapper import default_callback
 from ..deephaven_figure import generate_figure, DeephavenFigure
 from ..preprocess import preprocess_timeline, preprocess_frequency_bar
 
