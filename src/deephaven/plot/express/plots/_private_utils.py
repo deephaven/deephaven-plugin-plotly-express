@@ -356,7 +356,7 @@ def process_args(
     """
     validate_common_args(args)
 
-    draw_figure = partial(generate_figure, draw=px.area)
+    draw_figure = partial(generate_figure, draw=px_func)
     partitioned = PartitionManager(args, draw_figure, groups)
 
     # todo: do this in partition manager?

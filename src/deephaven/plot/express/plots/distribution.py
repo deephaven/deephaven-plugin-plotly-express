@@ -358,10 +358,15 @@ def histogram(
         table: Table = None,
         x: str | list[str] = None,
         y: str | list[str] = None,
+        plot_by: str | list[str] = None,
+        color: str | list[str] = None,
+        pattern_shape: str | list[str] = None,
         hover_name: str | list[str] = None,
         labels: dict[str, str] = None,
         color_discrete_sequence: list[str] = None,
+        color_discrete_map: dict[str, str] = None,
         pattern_shape_sequence: list[str] = None,
+        pattern_shape_map: dict[str, str] = None,
         marginal: str = None,
         opacity: float = None,
         barmode: str = 'relative',
@@ -482,15 +487,15 @@ def histogram(
         histnorm=histnorm,
         cumulative=cumulative
     )
-
+    """
     create_layered = partial(
         preprocess_and_layer,
         preprocessor, px.bar, args,
         is_hist=True
     )
-
-    update_wrapper = process_args(
-        args, {"bar"},
+    """
+    return process_args(
+        args, {"bar", "preprocess_hist", "supports_lists"}, px_func = px.bar,
         pop=["nbins", "histfunc", "range_bins", "histnorm", "barnorm",
              "cumulative"]
     )

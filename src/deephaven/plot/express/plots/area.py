@@ -153,7 +153,7 @@ def area(
     #update_wrapper = process_args(args, {"area", "line"})
 
     #draw_figure = partial(generate_figure, draw=px.area)
-    return process_args(args, {"area", "line", "stackable"}, px_func = px.area)
+    return process_args(args, {"area", "line", "supports_lists"}, px_func = px.area)
 """
     trace_generator = None
     figs = []

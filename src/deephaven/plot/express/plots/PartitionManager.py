@@ -6,6 +6,7 @@ from deephaven import merge
 
 from ._layer import layer
 from ..shared import get_unique_names
+from ..preprocess import preprocess_ecdf, create_hist_tables, preprocess_violin
 
 
 PARTITION_ARGS = {
@@ -63,21 +64,43 @@ class PartitionManager:
             groups
     ):
 
-        self.variable = None
-        self.variable_column = None
+        self.var = None
+        self.cols = None
+        self.pivot_vars = None
         self.variable_plot_by = False
 
         self.args = args
         self.groups = groups
+        self.preprocess()
+        self.set_pivot_variables()
+        if "supports_lists" in self.groups:
+            # or here
+            self.convert_table_to_long_mode()
         self.partitioned_table = self.process_partitions()
         self.draw_figure = draw_figure
 
-
-        pass
-
-    def stack_table(
-            self,
+    def preprocess(
+            self
     ):
+        # two preprocessing_modes
+        # whole table or
+        if "preprocess_hist" in self.groups:
+            var = "x" if self.args["x"] else "y"
+            columns = self.args[var]
+            self.args["orientation"] = "h" if var == "y" else None
+            self.args["table"], self.args["x"], self.args["y"] = create_hist_tables(
+                columns=columns if isinstance(columns, list) else [columns],
+                table=self.args["table"],
+                nbins=self.args["nbins"],
+                range_bins=self.args["range_bins"],
+                histfunc=self.args["histfunc"],
+                barnorm=self.args["barnorm"],
+                histnorm=self.args["histnorm"],
+                cumulative=self.args["cumulative"]
+            )
+
+
+    def set_pivot_variables(self):
         args = self.args
         table, x, y = args["table"], args["x"], args["y"]
         if isinstance(x, list):
@@ -85,26 +108,31 @@ class PartitionManager:
         elif isinstance(y, list):
             var, cols = "y", y
         else:
-            # if there is no list, there is no need to stack
+            # if there is no list, there is no need to convert to long mode
+            self.groups.discard("supports_lists")
             return
 
-        new_tables = []
-        pivot_vars = get_unique_names(table, ["variable", "value"])
+        self.var = var
+        self.cols = cols
 
-        self.variable = var
-        self.variable_column = pivot_vars["variable"]
+        args["current_var"] = self.var
+
+        self.pivot_vars = get_unique_names(table, ["variable", "value"])
+        self.args["pivot_vars"] = self.pivot_vars
+
+
+    def convert_table_to_long_mode(
+            self,
+    ):
+        args = self.args
+        table = args["table"]
 
         # if there is no plot by arg, the variable column becomes it
         if not self.args.get("plot_by", None):
             self.variable_plot_by = True
-            self.args["plot_by"] = self.variable_column
+            args["plot_by"] = self.pivot_vars["variable"]
 
-        for col in cols:
-            new_tables.append(table.update_view(formulas=f"{pivot_vars['variable']} = `{col}`"))
-
-        args["table"] = merge(new_tables)
-        # if there is no plot_by, variable column acts like a plot_by
-        args["plot_by"] = pivot_vars["variable"] if args["plot_by"] is None else args["plot_by"]
+        args["table"] = self.to_long_mode(table, self.cols)
 
     def handle_plot_by_arg(
             self,
@@ -156,15 +184,12 @@ class PartitionManager:
     def process_partitions(
             self
     ):
-        if "stackable" in self.groups:
-            self.stack_table()
-
         args = self.args
 
         partition_cols = set()
         partition_map = {}
         for arg, val in list(self.args.items()):
-            if (val or args["plot_by"]) and arg in PARTITION_ARGS:
+            if (val or args.get("plot_by", None)) and arg in PARTITION_ARGS:
                 arg_by, cols = self.handle_plot_by_arg(arg, val)
                 if cols:
                     partition_map[arg_by] = cols
@@ -192,8 +217,29 @@ class PartitionManager:
             args.pop("plot_by")
             return partitioned_table
 
-        args.pop("plot_by")
+        args.pop("plot_by", None)
         return args
+
+    def build_ternary_chain(self, cols):
+        # todo: fix, this is bad
+        ternary_string = f"{self.pivot_vars['value']} = "
+        for i, col in enumerate(cols):
+            if i == len(cols) - 1:
+                ternary_string += f"{col}"
+            else:
+                ternary_string += f"{self.pivot_vars['variable']} == `{col}` ? {col} : "
+        return ternary_string
+
+    def to_long_mode(self, table, cols):
+        new_tables = []
+        for col in cols:
+            new_tables.append(table.update_view(f"{self.pivot_vars['variable']} = `{col}`"))
+
+        merged = merge(new_tables)
+
+        transposed = merged.update_view(self.build_ternary_chain(cols))
+
+        return transposed.drop_columns(cols)
 
     def generator(self):
         args, partitioned_table = self.args, self.partitioned_table
@@ -207,9 +253,10 @@ class PartitionManager:
                 ))
 
 
-                if self.variable_column:
-                    # there is a list of variables, so replace them with the current one
-                    args[self.variable] = args["current_partition"][self.variable_column]
+                if self.pivot_vars["value"]:
+                    # there is a list of variables, so replace them with the combined column
+                    args[self.var] = self.pivot_vars["value"]
+                    args["current_col"] = args[self.var]
 
                 args["table"] = table
                 yield args

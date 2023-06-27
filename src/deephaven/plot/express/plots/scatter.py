@@ -18,13 +18,23 @@ def scatter(
         error_x_minus: str | list[str] = None,
         error_y: str | list[str] = None,
         error_y_minus: str | list[str] = None,
+        plot_by: str | list[str] = None,
+        line_group: str | list[str] = None,
+        color: str | list[str] = None,
+        pattern_shape: str | list[str] = None,
+        symbol: str | list[str] = None,
         size: str | list[str] = None,
         text: str | list[str] = None,
         hover_name: str | list[str] = None,
         labels: dict[str, str] = None,
         color_discrete_sequence: list[str] = None,
+        color_discrete_map: dict[str, str] = None,
+        pattern_shape_sequence: list[str] = None,
+        pattern_shape_map: dict[str, str] = None,
         symbol_sequence: list[str] = None,
+        symbol_map: dict[str, str] = None,
         size_sequence: list[int] = None,
+        size_map: dict[str, str] = None,
         xaxis_sequence: list[int] = None,
         yaxis_sequence: list[int] = None,
         opacity: float = None,
@@ -154,7 +164,7 @@ def scatter(
 
     marg_data, marg_style = get_marg_args(args)
 
-    update_wrapper = process_args(args, {"scatter"})
+    return process_args(args, {"scatter", "supports_lists"}, px_func=px.scatter)
 
     return update_wrapper(
         attach_marginals(
