@@ -256,12 +256,12 @@ class PartitionManager:
                 if self.pivot_vars["value"]:
                     # there is a list of variables, so replace them with the combined column
                     args[self.var] = self.pivot_vars["value"]
-                    args["current_col"] = args[self.var]
 
                 args["table"] = table
                 yield args
         else:
             yield args
+
 
     def create_figure(self):
         trace_generator = None

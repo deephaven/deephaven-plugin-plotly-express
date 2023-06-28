@@ -575,13 +575,13 @@ def handle_custom_args(
       dict[str, any]: Trace generator, to be used if adding more traces
 
     """
-    # if there is a specified trace generator, use that instead since it
-    # accurately reflects with color, pattern, etc. is next
-    # don't need to adjust layout as that will not change
     if extra_generators:
         for generator in extra_generators:
             update_traces(fig, generator, step)
 
+    # if there is a specified trace generator, use that instead since it
+    # accurately reflects with color, pattern, etc. is next
+    # don't need to adjust layout as that will not change
     if trace_generator:
         update_traces(fig, trace_generator, step)
         return trace_generator
@@ -684,7 +684,7 @@ def handle_custom_args(
 
 def get_list_var_info(
         data_cols: dict[str, str | list[str]]
-) -> tuple[list[str], str | None, set[str]]:
+) -> set[str]:
     """Extract the variable that is a list.
 
     Args:
@@ -705,25 +705,22 @@ def get_list_var_info(
     # for them
     types.add("finance" if data_cols.get("x_finance", False) else None)
 
-    for var, cols in data_cols.items():
+    """for var, cols in data_cols.items():
         # there should only be at most one data list (with the filtered
         # exception of finance charts) so the first one encountered is the var
         if isinstance(cols, list):
             # the col name here might be overriden during data_mapping
-            return cols, var, types
+            return cols, var, types"""
 
-    return [], None, types
+    return types
 
 
 def relabel_columns(
         labels: dict[str, str],
         hover_mapping: list[dict[str, str]],
-        list_var_cols: list[str],
-        pivot_vars: dict[str, str],
         types: set[str],
-        current_col: str,
-        current_partitions: list[tuple[str, str]]
-) -> str:
+        current_partition: dict[str, str]
+) -> None:
     """Relabel any columns found in data
 
     Args:
@@ -739,29 +736,21 @@ def relabel_columns(
       str: The current column renamed
     """
     if labels:
-        for i, col in enumerate(list_var_cols):
-            list_var_cols[i] = labels.get(col, col)
-
         for current_mapping in hover_mapping:
             for var, col in current_mapping.items():
                 if "gantt" in types:
                     current_mapping.pop("x")
                 current_mapping[var] = labels.get(col, col)
 
-        for i, (col, var) in enumerate(current_partitions):
+        for i, (col, var) in enumerate(current_partition):
             new_col, new_var = labels.get(col), labels.get(var)
-            current_partitions[i] = (new_col, new_var)
+            current_partition[i] = (new_col, new_var)
 
-        for base_col, actual_col in pivot_vars.items():
-            pivot_vars[base_col] = labels.get(actual_col, actual_col)
-
-        return labels.get(current_col, current_col)
 
 
 def get_hover_body(
         current_mapping: dict[str, str],
-        pivot_vars: dict[str, str] = None,
-        current_col: str = None,
+        current_partition: dict[str, str] = None,
 ) -> str:
     """Get the hovertext
 
@@ -782,9 +771,9 @@ def get_hover_body(
         hover_name += "<b>%{hovertext}</b><br><br>"
         current_mapping.pop("hovertext")
 
-    hover_body = [
-        f"{pivot_vars['variable']}={current_col}"
-    ] if current_col else []
+    hover_body = []
+    for col, val in current_partition.items():
+        hover_body.append(f"{col}={val}")
     for var, data_col in current_mapping.items():
         # error bars are automatically displayed with the associated variable
         if var.startswith("error"):
@@ -793,21 +782,16 @@ def get_hover_body(
         var = var[:-1] if var.endswith("s") else var
         # slashes are replaced with dots to lookup variables
         var = var.replace("/", ".")
-        if data_col == current_col:
-            hover_body.append(f"{pivot_vars['value']}=%{{{var}}}")
-        else:
-            hover_body.append(f"{data_col}=%{{{var}}}")
+        hover_body.append(f"{data_col}=%{{{var}}}")
+
     return hover_name + "<br>".join(hover_body) + "<extra></extra>"
 
 
 def hover_text_generator(
         hover_mapping: list[dict[str, str]],
-        pivot_vars: dict[str, str],
         # hover_data - todo, dependent on arrays supported in data mappings
-        current_col: str = None,
-        list_var_cols: list[str] = None,
         types: set[str] = None,
-        current_partitions: list[tuple[str, str]] = None
+        current_partition: dict[str, str] = None
 ) -> Generator[dict[str, any]]:
     """Generate hovertext
 
@@ -831,48 +815,30 @@ def hover_text_generator(
         while True:
             yield {}
 
-    if list_var_cols:
-        for current_mapping, current_col in zip(hover_mapping, list_var_cols):
-            yield {
-                "name": current_col,
-                "legendgroup": current_col,
-                "hovertemplate": get_hover_body(
-                    current_mapping, pivot_vars, current_col
-                ),
-                "showlegend": True
-            }
-    elif current_col:
-        # there is a list of columns, but it isn't passed to the generating
-        # function
-        # it is assumed that this is bar_frequency or a distribution plot, and
-        # this may throw errors outside of those plot types
-        yield {
-            "name": current_col,
-            "legendgroup": current_col,
-            "hovertemplate": get_hover_body(
-                hover_mapping[0], pivot_vars, current_col,
-            ),
-            "showlegend": True
-        }
+    name = ",".join(current_partition.values())
 
-    else:
-        while True:
-            yield {
-                "hovertemplate": get_hover_body(hover_mapping[0]),
-            }
+    yield {
+        "name": name,
+        "legendgroup": name,
+        "hovertemplate": get_hover_body(
+            hover_mapping[0], current_partition,
+        ),
+        "showlegend": True
+    }
+
+    while True:
+        yield {
+            "hovertemplate": get_hover_body(hover_mapping[0]),
+        }
 
 
 def compute_labels(
         hover_mapping: list[dict[str, str]],
-        current_var: str,
         hist_val_name: str,
-        pivot_vars: dict[str, str],
         # hover_data - todo, dependent on arrays supported in data mappings
-        current_col: str,
-        list_var_cols: list[str],
         types: set[str],
         labels: dict[str, str],
-        current_partitions: list[tuple[str, str]],
+        current_partition: dict[str, str],
 ) -> str:
     """Compute the labels for this chart, relabling the axis and hovertext.
     Mostly, labels are taken directly from the labels with the exception of
@@ -895,28 +861,20 @@ def compute_labels(
 
     """
 
-    calculate_hist_labels(
-        current_var,
-        current_col,
+    """calculate_hist_labels(
         hist_val_name,
         hover_mapping[0]
-    )
+    )"""
 
-    # current_col needs to be renamed as well, but it's a string, so return it
-    return relabel_columns(
+    relabel_columns(
         labels,
         hover_mapping,
-        list_var_cols,
-        pivot_vars,
         types,
-        current_col,
-        current_partitions
+        current_partition
     )
 
 
 def calculate_hist_labels(
-        current_var: str,
-        current_col: str,
         hist_val_name: str,
         current_mapping: dict[str, str]
 ) -> None:
@@ -1034,44 +992,42 @@ def create_hover_and_axis_titles(
       dict[str, any]: dicts containing hover updates
 
     """
-    list_var_cols, list_var, types = get_list_var_info(data_cols)
+    types = get_list_var_info(data_cols)
 
-    current_col = custom_call_args.get("current_col", None)
+    #current_col = custom_call_args.get("current_col", None)
 
     # only one of current_var and list_var should be specified and they have
     # the same function
-    current_var = custom_call_args.get("current_var", list_var)
-    pivot_vars = custom_call_args.get("pivot_vars", {})
+    #current_var = custom_call_args.get("current_var", None)
+    #pivot_vars = custom_call_args.get("pivot_vars", {})
 
     labels = custom_call_args.get("labels", None)
     hist_val_name = custom_call_args.get("hist_val_name", None)
 
     current_partition = custom_call_args.get("current_partition", None)
+    print(custom_call_args)
 
-    if (current_col or list_var_cols) and not pivot_vars:
-        pivot_vars = get_unique_names(table, ["variable", "value"])
+    #if (current_col or list_var_cols) and not pivot_vars:
+    #    pivot_vars = get_unique_names(table, ["variable", "value"])
 
-    current_col = compute_labels(
+    compute_labels(
         hover_mapping,
-        current_var,
-        hist_val_name, pivot_vars,
-        current_col, list_var_cols,
+        hist_val_name,
         types, labels,
         current_partition
     )
 
     hover_text = hover_text_generator(
-        hover_mapping, pivot_vars,
-        current_col, list_var_cols,
+        hover_mapping,
         types, current_partition
     )
 
-    add_axis_titles(
+    """add_axis_titles(
         custom_call_args, current_var,
         hover_mapping, pivot_vars,
         bool(list_var_cols or current_col),
         hist_val_name
-    )
+    )"""
 
     return hover_text
 
