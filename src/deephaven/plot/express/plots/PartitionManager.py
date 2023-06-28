@@ -1,4 +1,5 @@
 from __future__ import annotations
+import plotly.express as px
 
 from deephaven.table import Table
 from deephaven import pandas as dhpd
@@ -14,7 +15,9 @@ PARTITION_ARGS = {
     "line_group": None,  # this will still use the discrete
     "color": ("color_discrete_sequence", "color_discrete_map"),
     "pattern_shape": ("pattern_shape_sequence", "pattern_shape_map"),
-    "symbol": ("symbol_sequence", "symbol_map")
+    "symbol": ("symbol_sequence", "symbol_map"),
+    "size": ("size_sequence", "size_map"),
+    "line_dash": ("line_dash_sequence", "line_dash_map"),
 }
 
 NUMERIC_TYPES = {
@@ -23,6 +26,14 @@ NUMERIC_TYPES = {
     "long",
     "float",
     "double",
+}
+
+STYLE_DEFAULTS = {
+    "color": px.colors.qualitative.Plotly,
+    "symbol": ["circle", "diamond", "square", "x", "cross"],
+    "line_dash": ["solid", "dot", "dash", "longdash", "dashdot", "longdashdot"],
+    "pattern_shape": ["", "/", "\\", "x", "+", "."],
+    "size": [4, 5, 6, 7, 8, 9]
 }
 
 def get_partition_key_column_tuples(
@@ -68,6 +79,14 @@ class PartitionManager:
         self.cols = None
         self.pivot_vars = None
         self.variable_plot_by = False
+        self.has_color = None
+
+        if not args.get("color_discrete_sequence"):
+            # the colors need to match the plotly qualitative colors so they can be
+            # overriden, but has_color should be false as the color was not
+            # specified by the user
+            self.has_color = False
+            args["color_discrete_sequence"] = px.colors.qualitative.Plotly
 
         self.args = args
         self.groups = groups
@@ -134,6 +153,13 @@ class PartitionManager:
 
         args["table"] = self.to_long_mode(table, self.cols)
 
+    def is_single_numeric_col(
+            self,
+            val,
+            numeric_cols
+    ):
+        return (isinstance(val, str) or len(val) == 1) and val in numeric_cols
+
     def handle_plot_by_arg(
             self,
             arg,
@@ -144,15 +170,17 @@ class PartitionManager:
 
         plot_by_cols = args.get("plot_by", None)
 
+        force_categorical = args.get("force_categorical")
+
         if arg == "color":
+            print(val)
             map_ = "color_discrete_map"
-            if map_ == "by":
+            if force_categorical is True or arg in force_categorical:
                 args["color_by"] = args.pop("color")
             elif map_ == "identity":
-
                 args["attached_color"] = args.pop["attached_color"]
                 # attached_color
-            elif val and (isinstance(val, str) or len(val) == 1) and val in numeric_cols:
+            elif val and self.is_single_numeric_col(val, numeric_cols) in numeric_cols:
                 # just keep the argument in place so it can be passed to plotly
                 # express directly
                 pass
@@ -164,19 +192,26 @@ class PartitionManager:
 
         elif arg == "size":
             map_ = "size_map"
-
-            if val and (isinstance(str, val) or len(val) == 1) and val in numeric_cols and map_ != "by":
+            #todo: figure out best way to allow by in size and also allow by as dict value in case column value is by
+            #   force_categorical = True or set{"color", "size"}
+            if val and self.is_single_numeric_col(val, numeric_cols) and "by" not in map_:
                 # just keep the argument in place so it can be passed to plotly
                 # express directly
                 pass
-            elif plot_by_cols:
+            elif val:
+                args[f"{arg}_by"] = args.pop(arg)
+            elif plot_by_cols and args.get("size_sequence"):
+                # for arguments other than color, plot_by does not kick in unless a sequence is specified
                 args["size_by"] = plot_by_cols
 
-        elif arg in {"pattern_shape", "symbol"}:
+        elif arg in {"pattern_shape", "symbol", "line_dash"}:
             map_ = PARTITION_ARGS[arg][1]
             if map_ == "identity":
-                args[f"{arg}_attached"] = plot_by_cols
-            else:
+                args[f"{arg}_attached"] = args.pop(arg)
+            elif val:
+                args[f"{arg}_by"] = args.pop(arg)
+            elif plot_by_cols and args.get(f"{arg}_sequence"):
+                # for arguments other than color, plot_by does not kick in unless a sequence is specified
                 args[f"{arg}_by"] = args.pop(arg)
 
         return f"{arg}_by", args.get(f"{arg}_by", None)
@@ -271,4 +306,7 @@ class PartitionManager:
             if not trace_generator:
                 trace_generator = fig.trace_generator
             figs.append(fig)
+        new_fig = layer(*figs)
+        if self.has_color is False:
+            new_fig.has_color = False
         return layer(*figs)

@@ -482,6 +482,8 @@ def sequence_generator(
                 elif map and len(val) == 1 and val[0] in map:
                     new_val = map[val[0]]
                 found[val] = new_val
+            print(found)
+            print(new_val)
             yield SEQUENCE_ARGS_MAP[arg], found[val]
 
     # this should never be hit if keys are specified
@@ -815,7 +817,7 @@ def hover_text_generator(
         while True:
             yield {}
 
-    name = ",".join(current_partition.values())
+    name = ", ".join(current_partition.values())
 
     yield {
         "name": name,
