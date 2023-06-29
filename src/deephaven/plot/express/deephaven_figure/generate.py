@@ -482,8 +482,6 @@ def sequence_generator(
                 elif map and len(val) == 1 and val[0] in map:
                     new_val = map[val[0]]
                 found[val] = new_val
-            print(found)
-            print(new_val)
             yield SEQUENCE_ARGS_MAP[arg], found[val]
 
     # this should never be hit if keys are specified
@@ -1007,7 +1005,6 @@ def create_hover_and_axis_titles(
     hist_val_name = custom_call_args.get("hist_val_name", None)
 
     current_partition = custom_call_args.get("current_partition", None)
-    print(custom_call_args)
 
     #if (current_col or list_var_cols) and not pivot_vars:
     #    pivot_vars = get_unique_names(table, ["variable", "value"])

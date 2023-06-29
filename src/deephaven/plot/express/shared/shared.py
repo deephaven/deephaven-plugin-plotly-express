@@ -58,6 +58,6 @@ def get_unique_names(
     for name in orig_names:
         new_name = name
         while new_name in table_columns or new_name in new_names:
-            new_name += '_'
+            new_name = '_' + new_name
         new_names[name] = new_name
     return new_names

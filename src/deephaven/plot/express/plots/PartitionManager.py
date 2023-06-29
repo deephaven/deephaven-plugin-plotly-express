@@ -160,6 +160,24 @@ class PartitionManager:
     ):
         return (isinstance(val, str) or len(val) == 1) and val in numeric_cols
 
+    def is_by(
+            self,
+            arg
+    ):
+        sequence_arg = PARTITION_ARGS[arg][0]
+        if not self.args[sequence_arg]:
+            self.args[sequence_arg] = STYLE_DEFAULTS[arg]
+
+        map_arg = PARTITION_ARGS[arg][1]
+        map_val = self.args[map_arg]
+        if map_val == "by":
+            self.args[map_arg] = None
+        if isinstance(map_val, tuple):
+            # the first element should be "by" and the map should be in the second, although a tuple with only "by"
+            # in it should also work
+            self.args[map_arg] = self.args[map_val][2] if len(map_val) == 2 else None
+        self.args[f"{arg}_by"] = self.args.pop(arg)
+
     def handle_plot_by_arg(
             self,
             arg,
@@ -170,49 +188,50 @@ class PartitionManager:
 
         plot_by_cols = args.get("plot_by", None)
 
-        force_categorical = args.get("force_categorical")
-
         if arg == "color":
-            print(val)
-            map_ = "color_discrete_map"
-            if force_categorical is True or arg in force_categorical:
-                args["color_by"] = args.pop("color")
+            map_ = args["color_discrete_map"]
+            if map_ == "by" or (isinstance(map_, tuple) and map_[0] == "by"):
+                self.is_by(arg)
             elif map_ == "identity":
-                args["attached_color"] = args.pop["attached_color"]
+                args["attached_color"] = args.pop["color"]
                 # attached_color
-            elif val and self.is_single_numeric_col(val, numeric_cols) in numeric_cols:
+            elif val and self.is_single_numeric_col(val, numeric_cols):
                 # just keep the argument in place so it can be passed to plotly
                 # express directly
                 pass
             elif val:
-                args["color_by"] = args.pop("color")
+                self.is_by(arg)
             elif plot_by_cols:
                 # this needs to be last as setting "color" in any sense will override
+                if not self.args["color_discrete_sequence"]:
+                    self.args["color_discrete_sequence"] = STYLE_DEFAULTS[arg]
                 args["color_by"] = plot_by_cols
 
         elif arg == "size":
-            map_ = "size_map"
-            #todo: figure out best way to allow by in size and also allow by as dict value in case column value is by
-            #   force_categorical = True or set{"color", "size"}
-            if val and self.is_single_numeric_col(val, numeric_cols) and "by" not in map_:
+            map_ = args["size_map"]
+            if map_ == "by" or (isinstance(map_, tuple) and map_[0] == "by"):
+                self.is_by(arg)
+            elif val and self.is_single_numeric_col(val, numeric_cols):
                 # just keep the argument in place so it can be passed to plotly
                 # express directly
                 pass
             elif val:
-                args[f"{arg}_by"] = args.pop(arg)
+                self.is_by(arg)
             elif plot_by_cols and args.get("size_sequence"):
                 # for arguments other than color, plot_by does not kick in unless a sequence is specified
                 args["size_by"] = plot_by_cols
 
         elif arg in {"pattern_shape", "symbol", "line_dash"}:
-            map_ = PARTITION_ARGS[arg][1]
-            if map_ == "identity":
+            map_ = args[PARTITION_ARGS[arg][1]]
+            if map_ == "by" or (isinstance(map_, tuple) and map_[0] == "by"):
+                self.is_by(arg)
+            elif map_ == "identity":
                 args[f"{arg}_attached"] = args.pop(arg)
             elif val:
-                args[f"{arg}_by"] = args.pop(arg)
+                self.is_by(arg)
             elif plot_by_cols and args.get(f"{arg}_sequence"):
                 # for arguments other than color, plot_by does not kick in unless a sequence is specified
-                args[f"{arg}_by"] = args.pop(arg)
+                args[f"{arg}_by"] = plot_by_cols
 
         return f"{arg}_by", args.get(f"{arg}_by", None)
 
@@ -236,19 +255,21 @@ class PartitionManager:
         if partition_cols:
             partitioned_table = args["table"].partition_by(list(partition_cols))
             key_column_table = dhpd.to_pandas(partitioned_table.table.select_distinct(partitioned_table.key_columns))
-            for arg, val in partition_map.items():
+            for arg_by, val in partition_map.items():
                 # remove "by" from arg
-                if isinstance(PARTITION_ARGS[arg[:-3]], tuple):
+                arg = arg_by[:-3]
+                if isinstance(PARTITION_ARGS[arg], tuple):
                     # replace the sequence with the sequence, map and distinct keys
                     # so they can be easily used together
                     keys = get_partition_key_column_tuples(key_column_table, val if isinstance(val, list) else [val])
-                    sequence, map_ = PARTITION_ARGS[arg[:-3]]
+                    sequence, map_ = PARTITION_ARGS[arg]
                     args[sequence] = {
                         "ls": args[sequence],
                         "map": args[map_],
                         "keys": keys
                     }
-                    args.pop(arg)
+                    args.pop(arg_by)
+                    args.pop(PARTITION_ARGS[arg][1])
             args.pop("plot_by")
             return partitioned_table
 
