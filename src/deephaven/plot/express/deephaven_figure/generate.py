@@ -64,6 +64,7 @@ SEQUENCE_ARGS_MAP = {
     # different locations
     "color_discrete_sequence_line": "line_color",
     "color_discrete_sequence_marker": "marker_color",
+    "width_sequence": "line_width",
     "increasing_color_sequence": "increasing_line_color",
     "decreasing_color_sequence": "decreasing_line_color",
     "size_sequence": "marker_size",

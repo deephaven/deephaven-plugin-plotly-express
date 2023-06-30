@@ -20,12 +20,24 @@ def line(
         error_y_minus: str | list[str] = None,
         size: str | list[str] = None,
         text: str | list[str] = None,
+        plot_by: str | list[str] = None,
+        line_group: str | list[str] = None,
+        line_dash: str | list[str] = None,
+        width: str  | list[str] = None,
+        color: str | list[str] = None,
+        symbol: str | list[str] = None,
         hover_name: str | list[str] = None,
         labels: dict[str, str] = None,
         color_discrete_sequence: list[str] = None,
+        color_discrete_map: dict[str, str] = None,
         line_dash_sequence: list[str] = None,
+        line_dash_map: dict[str, str] = None,
         symbol_sequence: list[str] = None,
+        symbol_map: dict[str, str] = None,
         size_sequence: list[int] = None,
+        size_map: dict[str, str] = None,
+        width_sequence: list[int] = None,
+        width_map: dict[str, str] = None,
         xaxis_sequence: list[str] = None,
         yaxis_sequence: list[str] = None,
         markers: bool = False,
@@ -155,7 +167,7 @@ def line(
     """
     args = locals()
 
-    update_wrapper = process_args(args, {"line"})
+    return process_args(args, {"line", "supports_lists"}, px_func=px.line)
 
     return update_wrapper(
         generate_figure(draw=px.line, call_args=args)

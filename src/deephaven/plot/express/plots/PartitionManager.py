@@ -18,6 +18,11 @@ PARTITION_ARGS = {
     "symbol": ("symbol_sequence", "symbol_map"),
     "size": ("size_sequence", "size_map"),
     "line_dash": ("line_dash_sequence", "line_dash_map"),
+    "width": ("width_sequence", "width_map")
+}
+
+FACET_ARGS = {
+    "facet_row", "facet_col"
 }
 
 NUMERIC_TYPES = {
@@ -33,7 +38,8 @@ STYLE_DEFAULTS = {
     "symbol": ["circle", "diamond", "square", "x", "cross"],
     "line_dash": ["solid", "dot", "dash", "longdash", "dashdot", "longdashdot"],
     "pattern_shape": ["", "/", "\\", "x", "+", "."],
-    "size": [4, 5, 6, 7, 8, 9]
+    "size": [4, 5, 6, 7, 8, 9],
+    "width": [3, 4, 5, 6, 7, 8]
 }
 
 def get_partition_key_column_tuples(
@@ -80,6 +86,8 @@ class PartitionManager:
         self.pivot_vars = None
         self.variable_plot_by = False
         self.has_color = None
+        self.facet_row = None
+        self.facet_col = None
 
         if not args.get("color_discrete_sequence"):
             # the colors need to match the plotly qualitative colors so they can be
@@ -221,7 +229,7 @@ class PartitionManager:
                 # for arguments other than color, plot_by does not kick in unless a sequence is specified
                 args["size_by"] = plot_by_cols
 
-        elif arg in {"pattern_shape", "symbol", "line_dash"}:
+        elif arg in {"pattern_shape", "symbol", "line_dash", "width"}:
             map_ = args[PARTITION_ARGS[arg][1]]
             if map_ == "by" or (isinstance(map_, tuple) and map_[0] == "by"):
                 self.is_by(arg)
@@ -251,6 +259,12 @@ class PartitionManager:
                         partition_cols.update([col for col in cols])
                     else:
                         partition_cols.add(cols)
+            elif val and arg in FACET_ARGS:
+                partition_cols.add(val)
+                if arg == "facet_row":
+                    self.facet_row = val
+                else:
+                    self.facet_col = val
 
         if partition_cols:
             partitioned_table = args["table"].partition_by(list(partition_cols))
@@ -258,7 +272,7 @@ class PartitionManager:
             for arg_by, val in partition_map.items():
                 # remove "by" from arg
                 arg = arg_by[:-3]
-                if isinstance(PARTITION_ARGS[arg], tuple):
+                if arg in PARTITION_ARGS and isinstance(PARTITION_ARGS[arg], tuple):
                     # replace the sequence with the sequence, map and distinct keys
                     # so they can be easily used together
                     keys = get_partition_key_column_tuples(key_column_table, val if isinstance(val, list) else [val])
@@ -297,9 +311,10 @@ class PartitionManager:
 
         return transposed.drop_columns(cols)
 
-    def generator(self):
+    def partition_generator(self):
         args, partitioned_table = self.args, self.partitioned_table
         if partitioned_table:
+            # todo: grab facet here
             for table in partitioned_table.constituent_tables:
                 key_column_table = dhpd.to_pandas(table.select_distinct(partitioned_table.key_columns))
                 args["current_partition"] = dict(zip(
@@ -318,14 +333,25 @@ class PartitionManager:
         else:
             yield args
 
+    def build_figure_grid(self):
+        pass
+
 
     def create_figure(self):
         trace_generator = None
         figs = []
-        for args in self.generator():
+        #todo: build grid if facet_row or facet_col
+        for args in self.partition_generator():
             fig = self.draw_figure(call_args=args, trace_generator=trace_generator)
             if not trace_generator:
                 trace_generator = fig.trace_generator
+
+            facet_key = []
+            if "current_partition" in args:
+                partition = args["current_partition"]
+                facet_key.extend([partition.get(self.facet_col), partition.get(self.facet_row)])
+            facet_key = tuple(facet_key)
+
             figs.append(fig)
         new_fig = layer(*figs)
         if self.has_color is False:
