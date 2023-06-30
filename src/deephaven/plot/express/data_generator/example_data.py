@@ -21,8 +21,8 @@ def example_data(ticking: bool = True, hours_of_data: int = 1) -> Table:
     already initilized so your example plots won't start empty.
 
     Contains the following columns:
-    - timestamp: a starting from the date deephaven.io was registered
-    - sym: a string represent a fictional stock symbol
+    - timestamp: a time column starting from the date deephaven.io was registered
+    - sym: a string representing a fictional stock symbol
     - exchange: a string representing a fictional stock exchange
     - size: the number of shares in the trade
     - price: the transaction price of the trade
@@ -48,6 +48,7 @@ def example_data(ticking: bool = True, hours_of_data: int = 1) -> Table:
         "2018-06-01T08:00:00 ET"
     )  # day deephaven.io was registered
     sym_list = ["CAT", "DOG", "FISH", "BIRD", "LIZARD"]
+    sym_dict = {v: i for i, v in enumerate(sym_list)}
     sym_weights = [95, 100, 70, 45, 35]
     exchange = ["NYPE", "PETX", "TPET"]
     exchange_weights = [50, 100, 45]
@@ -66,9 +67,6 @@ def example_data(ticking: bool = True, hours_of_data: int = 1) -> Table:
 
     def random_list_sym(seed: int) -> str:
         return random.choices(sym_list, sym_weights)[0]
-
-    def list_sym_index(sym: str) -> int:
-        return sym_list.index(sym)
 
     def random_list_exchange(seed: int) -> str:
         return random.choices(exchange, exchange_weights)[0]
@@ -103,7 +101,7 @@ def example_data(ticking: bool = True, hours_of_data: int = 1) -> Table:
                 "exchange = random_list_exchange(i)",
                 "side = random_double >= 0 ? `buy` : `sell`",
                 "size = random_trade_size(random_double)",
-                "sym_index = list_sym_index(sym)",
+                "sym_index = (int)sym_dict[sym]",
                 "index = i",
             ]
         )
@@ -161,7 +159,7 @@ def example_data(ticking: bool = True, hours_of_data: int = 1) -> Table:
         )
     )
 
-    if ticking == True:
+    if ticking:
         result_replayer = TableReplayer(start_time, end_time)
         replayer_table = result_replayer.add_table(static_table, "timestamp")
         result_replayer.start()
