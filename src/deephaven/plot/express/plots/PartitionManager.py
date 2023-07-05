@@ -11,7 +11,7 @@ from ..preprocess import preprocess_ecdf, create_hist_tables, preprocess_violin
 
 
 PARTITION_ARGS = {
-    "plot_by": None,
+    "by": None,
     "line_group": None,  # this will still use the discrete
     "color": ("color_discrete_sequence", "color_discrete_map"),
     "pattern_shape": ("pattern_shape_sequence", "pattern_shape_map"),
@@ -155,9 +155,9 @@ class PartitionManager:
         table = args["table"]
 
         # if there is no plot by arg, the variable column becomes it
-        if not self.args.get("plot_by", None):
+        if not self.args.get("by", None):
             self.variable_plot_by = True
-            args["plot_by"] = self.pivot_vars["variable"]
+            args["by"] = self.pivot_vars["variable"]
 
         args["table"] = self.to_long_mode(table, self.cols)
 
@@ -183,7 +183,7 @@ class PartitionManager:
         if isinstance(map_val, tuple):
             # the first element should be "by" and the map should be in the second, although a tuple with only "by"
             # in it should also work
-            self.args[map_arg] = self.args[map_val][2] if len(map_val) == 2 else None
+            self.args[map_arg] = map_val[1] if len(map_val) == 2 else None
         self.args[f"{arg}_by"] = self.args.pop(arg)
 
     def handle_plot_by_arg(
@@ -194,7 +194,7 @@ class PartitionManager:
         args = self.args
         numeric_cols = numeric_column_set(args["table"])
 
-        plot_by_cols = args.get("plot_by", None)
+        plot_by_cols = args.get("by", None)
 
         if arg == "color":
             map_ = args["color_discrete_map"]
@@ -206,6 +206,7 @@ class PartitionManager:
             elif val and self.is_single_numeric_col(val, numeric_cols):
                 # just keep the argument in place so it can be passed to plotly
                 # express directly
+                print("color axis")
                 pass
             elif val:
                 self.is_by(arg)
@@ -251,7 +252,7 @@ class PartitionManager:
         partition_cols = set()
         partition_map = {}
         for arg, val in list(self.args.items()):
-            if (val or args.get("plot_by", None)) and arg in PARTITION_ARGS:
+            if (val or args.get("by", None)) and arg in PARTITION_ARGS:
                 arg_by, cols = self.handle_plot_by_arg(arg, val)
                 if cols:
                     partition_map[arg_by] = cols
@@ -284,11 +285,11 @@ class PartitionManager:
                     }
                     args.pop(arg_by)
                     args.pop(PARTITION_ARGS[arg][1])
-            args.pop("plot_by")
+            args.pop("by")
             return partitioned_table
 
-        args.pop("plot_by", None)
-        return args
+        args.pop("by", None)
+        return args["table"]
 
     def build_ternary_chain(self, cols):
         # todo: fix, this is bad
@@ -313,8 +314,7 @@ class PartitionManager:
 
     def partition_generator(self):
         args, partitioned_table = self.args, self.partitioned_table
-        if partitioned_table:
-            # todo: grab facet here
+        if hasattr(partitioned_table, "constituent_tables"):
             for table in partitioned_table.constituent_tables:
                 key_column_table = dhpd.to_pandas(table.select_distinct(partitioned_table.key_columns))
                 args["current_partition"] = dict(zip(
@@ -324,7 +324,7 @@ class PartitionManager:
                 ))
 
 
-                if self.pivot_vars["value"]:
+                if self.pivot_vars and self.pivot_vars["value"]:
                     # there is a list of variables, so replace them with the combined column
                     args[self.var] = self.pivot_vars["value"]
 
@@ -333,14 +333,10 @@ class PartitionManager:
         else:
             yield args
 
-    def build_figure_grid(self):
-        pass
-
 
     def create_figure(self):
         trace_generator = None
         figs = []
-        #todo: build grid if facet_row or facet_col
         for args in self.partition_generator():
             fig = self.draw_figure(call_args=args, trace_generator=trace_generator)
             if not trace_generator:
@@ -349,7 +345,7 @@ class PartitionManager:
             facet_key = []
             if "current_partition" in args:
                 partition = args["current_partition"]
-                facet_key.extend([partition.get(self.facet_col), partition.get(self.facet_row)])
+                facet_key.extend([partition.get(self.facet_col, None), partition.get(self.facet_row, None)])
             facet_key = tuple(facet_key)
 
             figs.append(fig)

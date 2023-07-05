@@ -11,13 +11,14 @@ CUSTOM_DATA_ARGS = {
     "x_diff": "x",
     "size": "marker/size",
     "text": "text",
-    "hover_name": "hovertext"
+    "hover_name": "hovertext",
 }
 
 # override these data columns with different names
 OVERRIDES = {
     "names": "labels",
     "x_start": "base",
+    "color": "marker/color"
 }
 
 # x_end is not used, the calculations are made in preprocessing step and passed to x

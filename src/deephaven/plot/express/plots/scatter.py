@@ -18,18 +18,13 @@ def scatter(
         error_x_minus: str | list[str] = None,
         error_y: str | list[str] = None,
         error_y_minus: str | list[str] = None,
-        plot_by: str | list[str] = None,
+        by: str | list[str] = None,
         line_group: str | list[str] = None,
         color: str | list[str] = None,
         symbol: str | list[str] = None,
         size: str | list[str] = None,
         hover_name: str | list[str] = None,
         text: str | list[str] = None,
-        facet_row: str = None,
-        facet_col: str = None,
-        facet_col_wrap: int = 0,
-        facet_row_spacing: float = 0.03,
-        facet_col_spacing: float = 0.02,
         labels: dict[str, str] = None,
         color_discrete_sequence: list[str] = None,
         color_discrete_map: dict[str, str] = None,
@@ -39,6 +34,9 @@ def scatter(
         size_map: dict[str, str] = None,
         xaxis_sequence: list[int] = None,
         yaxis_sequence: list[int] = None,
+        color_continuous_scale = None,
+        range_color = None,
+        color_continuous_midpoint = None,
         opacity: float = None,
         marginal_x: str = None,
         marginal_y: str = None,
@@ -166,7 +164,7 @@ def scatter(
 
     marg_data, marg_style = get_marg_args(args)
 
-    return process_args(args, {"scatter", "supports_lists"}, px_func=px.scatter)
+    return process_args(args, {"scatter", "supports_lists", "both_marginals"}, px_func=px.scatter)
 
     return update_wrapper(
         attach_marginals(

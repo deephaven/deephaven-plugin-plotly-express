@@ -42,7 +42,10 @@ DATA_ARGS = {
     "names", "values",
     "parents", "ids",
     "x_start", "x_end",
-    #"color"
+    # color itself is only a data arg when there is a color axis
+    # in other cases, the color would already be calculated so this argument
+    # would not be set
+    "color"
 }
 DATA_ARGS.update(DATA_LIST_ARGS)
 
@@ -225,7 +228,7 @@ def split_args(
                 # was introduced in 3.9
                 # new_call_args[arg.removesuffix('_scene')] = val
                 new_call_args[arg[:-6]] = val
-            elif arg.startswith("range_"):
+            elif arg.startswith("range_") and arg != "range_color":
                 # range is a special case as ranges are a list
                 # None can be specified for no range within a list of ranges
                 custom_call_args[arg] = val if \
@@ -773,8 +776,9 @@ def get_hover_body(
         current_mapping.pop("hovertext")
 
     hover_body = []
-    for col, val in current_partition.items():
-        hover_body.append(f"{col}={val}")
+    if current_partition:
+        for col, val in current_partition.items():
+            hover_body.append(f"{col}={val}")
     for var, data_col in current_mapping.items():
         # error bars are automatically displayed with the associated variable
         if var.startswith("error"):
@@ -816,16 +820,17 @@ def hover_text_generator(
         while True:
             yield {}
 
-    name = ", ".join(current_partition.values())
+    if current_partition:
+        name = ", ".join(map(str, current_partition.values()))
 
-    yield {
-        "name": name,
-        "legendgroup": name,
-        "hovertemplate": get_hover_body(
-            hover_mapping[0], current_partition,
-        ),
-        "showlegend": True
-    }
+        yield {
+            "name": name,
+            "legendgroup": name,
+            "hovertemplate": get_hover_body(
+                hover_mapping[0], current_partition,
+            ),
+            "showlegend": True
+        }
 
     while True:
         yield {
@@ -1067,6 +1072,7 @@ def generate_figure(
                                              list(data_cols.values())
                                          ))
 
+    print(filtered_call_args)
     px_fig = draw(data_frame=data_frame, **filtered_call_args)
 
     data_mapping, hover_mapping = create_data_mapping(
