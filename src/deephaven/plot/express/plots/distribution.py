@@ -11,7 +11,7 @@ from ._private_utils import validate_common_args, preprocess_and_layer, process_
 from ._update_wrapper import default_callback, unsafe_figure_update_wrapper
 from ._layer import layer
 from ..deephaven_figure import DeephavenFigure
-from ..preprocess import preprocess_ecdf, create_hist_tables, preprocess_violin
+from ..preprocess import preprocess_ecdf, preprocess_violin
 
 
 def violin(
@@ -358,7 +358,7 @@ def histogram(
         table: Table = None,
         x: str | list[str] = None,
         y: str | list[str] = None,
-        plot_by: str | list[str] = None,
+        by: str | list[str] = None,
         color: str | list[str] = None,
         pattern_shape: str | list[str] = None,
         hover_name: str | list[str] = None,
@@ -478,15 +478,7 @@ def histogram(
 
     marg_data, marg_style = get_marg_args(args)
 
-    preprocessor = partial(
-        create_hist_tables,
-        nbins=nbins,
-        range_bins=range_bins,
-        histfunc=histfunc,
-        barnorm=barnorm,
-        histnorm=histnorm,
-        cumulative=cumulative
-    )
+
     """
     create_layered = partial(
         preprocess_and_layer,
@@ -495,9 +487,7 @@ def histogram(
     )
     """
     return process_args(
-        args, {"bar", "preprocess_hist", "supports_lists"}, px_func = px.bar,
-        pop=["nbins", "histfunc", "range_bins", "histnorm", "barnorm",
-             "cumulative"]
+        args, {"bar", "preprocess_hist", "supports_lists"}, px_func = px.bar
     )
 
     var = "x" if x else "y"

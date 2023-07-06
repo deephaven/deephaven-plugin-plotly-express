@@ -6,8 +6,8 @@ from deephaven import pandas as dhpd
 from deephaven import merge
 
 from ._layer import layer
+from ..preprocess.Preprocesser import Preprocesser
 from ..shared import get_unique_names
-from ..preprocess import preprocess_ecdf, create_hist_tables, preprocess_violin
 
 
 PARTITION_ARGS = {
@@ -81,7 +81,7 @@ class PartitionManager:
             groups
     ):
 
-        self.var = None
+        self.list_var = None
         self.cols = None
         self.pivot_vars = None
         self.variable_plot_by = False
@@ -98,33 +98,13 @@ class PartitionManager:
 
         self.args = args
         self.groups = groups
-        self.preprocess()
+        self.preprocessor = Preprocesser(args, groups)
         self.set_pivot_variables()
         if "supports_lists" in self.groups:
             # or here
             self.convert_table_to_long_mode()
         self.partitioned_table = self.process_partitions()
         self.draw_figure = draw_figure
-
-    def preprocess(
-            self
-    ):
-        # two preprocessing_modes
-        # whole table or
-        if "preprocess_hist" in self.groups:
-            var = "x" if self.args["x"] else "y"
-            columns = self.args[var]
-            self.args["orientation"] = "h" if var == "y" else None
-            self.args["table"], self.args["x"], self.args["y"] = create_hist_tables(
-                columns=columns if isinstance(columns, list) else [columns],
-                table=self.args["table"],
-                nbins=self.args["nbins"],
-                range_bins=self.args["range_bins"],
-                histfunc=self.args["histfunc"],
-                barnorm=self.args["barnorm"],
-                histnorm=self.args["histnorm"],
-                cumulative=self.args["cumulative"]
-            )
 
 
     def set_pivot_variables(self):
@@ -139,10 +119,10 @@ class PartitionManager:
             self.groups.discard("supports_lists")
             return
 
-        self.var = var
+        self.list_var = var
         self.cols = cols
 
-        args["current_var"] = self.var
+        args["current_var"] = self.list_var
 
         self.pivot_vars = get_unique_names(table, ["variable", "value"])
         self.args["pivot_vars"] = self.pivot_vars
@@ -312,23 +292,41 @@ class PartitionManager:
 
         return transposed.drop_columns(cols)
 
+    def current_partition_generator(self):
+        for table in self.partitioned_table.constituent_tables:
+            key_column_table = dhpd.to_pandas(table.select_distinct(self.partitioned_table.key_columns))
+            current_partition = dict(zip(
+                self.partitioned_table.key_columns,
+                get_partition_key_column_tuples(key_column_table,
+                                                self.partitioned_table.key_columns)[0]
+            ))
+            yield current_partition
+
+    def table_partition_generator(self):
+        constituents = self.partitioned_table.constituent_tables
+        column = self.pivot_vars["value"] if self.pivot_vars else None
+        tables = self.preprocessor.preprocess_partitioned_tables(constituents, column)
+        for table, current_partition in zip(tables, self.current_partition_generator()):
+            yield table, current_partition
+
+
+
     def partition_generator(self):
         args, partitioned_table = self.args, self.partitioned_table
         if hasattr(partitioned_table, "constituent_tables"):
-            for table in partitioned_table.constituent_tables:
-                key_column_table = dhpd.to_pandas(table.select_distinct(partitioned_table.key_columns))
-                args["current_partition"] = dict(zip(
-                    partitioned_table.key_columns,
-                    get_partition_key_column_tuples(key_column_table,
-                                                    partitioned_table.key_columns)[0]
-                ))
-
-
-                if self.pivot_vars and self.pivot_vars["value"]:
+            for table, current_partition in self.table_partition_generator():
+                if isinstance(table, tuple):
+                    # if a tuple is returned here, it was preprocessed already so pivots aren't needed
+                    table, arg_update = table
+                    args.update(arg_update)
+                elif self.pivot_vars and self.pivot_vars["value"]:
                     # there is a list of variables, so replace them with the combined column
-                    args[self.var] = self.pivot_vars["value"]
+                    args[self.list_var] = self.pivot_vars["value"]
+
+                args["current_partition"] = current_partition
 
                 args["table"] = table
+                print(args)
                 yield args
         else:
             yield args
