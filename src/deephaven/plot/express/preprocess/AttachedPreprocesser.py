@@ -14,18 +14,19 @@ class AttachedPreprocesser():
     def prepare_preprocess(self):
         # create new columns
         table = self.args["table"]
-        # these should always be using the values column
-        values_col = self.args["values"]
-        for var, (map, ls, new_col) in self.always_attached.items():
+        for col, (map, ls, new_col) in self.always_attached.items():
             manager_col = get_unique_names(table, [f"{new_col}_manager"])[f"{new_col}_manager"]
+            #todo: set to names by default if color not set
+            names_col = self.args[col]
             style_manager = StyleManager(map=map, ls=ls)
 
             table = table.update([
                 f"{manager_col}=style_manager",
-                f"{new_col}={manager_col}.assign_style({values_col})"
+                f"{new_col}={manager_col}.assign_style({names_col})"
             ])
 
         self.args["table"] = table
+
 
     def preprocess_partitioned_tables(self, tables, column=None):
         pass
