@@ -160,10 +160,11 @@ class PartitionManager:
     ):
         seq_arg = PARTITION_ARGS[arg][0]
         if "always_attached" in self.groups:
-            new_col_name = get_unique_names(self.args.table, [arg])
-            self.always_attached[arg] = (map_val, self.args[seq_arg], new_col_name)
+            print("here")
+            new_col = get_unique_names(self.args["table"], [arg])[arg]
+            self.always_attached[arg] = (map_val, self.args[seq_arg], new_col)
             # a new column will be constructed so this color is always updated
-            self.args[f"attached_{arg}"] = new_col_name
+            self.args[f"attached_{arg}"] = new_col
         else:
             if not self.args[seq_arg]:
                 self.args[seq_arg] = STYLE_DEFAULTS[arg]

@@ -235,7 +235,7 @@ def calculate_mode(
     return "+".join(modes)
 
 
-def append_prefixes(
+def append_suffixes(
         args,
         prefixes,
         sync_dict
@@ -263,7 +263,7 @@ def apply_args_groups(
 
     if "scatter" in groups:
         args["mode"] = calculate_mode("markers", args)
-        append_prefixes(
+        append_suffixes(
             ["color_discrete_sequence", "attached_color"],
             ["marker"],
             sync_dict
@@ -271,7 +271,7 @@ def apply_args_groups(
 
     if "line" in groups:
         args["mode"] = calculate_mode("lines", args)
-        append_prefixes(
+        append_suffixes(
             ["color_discrete_sequence", "attached_color"],
             ["marker", "line"],
             sync_dict
@@ -281,7 +281,7 @@ def apply_args_groups(
         # ecdf should be forced to lines even if both "lines" and "markers" are False
         base_mode = "lines" if args["lines"] or not args["markers"] else "markers"
         args["mode"] = calculate_mode(base_mode, args)
-        append_prefixes(
+        append_suffixes(
             ["color_discrete_sequence", "attached_color"],
             ["marker", "line"],
             sync_dict
@@ -292,33 +292,34 @@ def apply_args_groups(
             args[arg + '_scene'] = args.pop(arg)
 
     if 'bar' in groups:
-        append_prefixes(
+        append_suffixes(
             ["color_discrete_sequence", "attached_color"],
             ["marker"],
             sync_dict
         )
-        append_prefixes(
+        append_suffixes(
             ["pattern_shape_sequence", "attached_pattern_shape"],
             ["bar"],
             sync_dict
         )
 
     if 'marker' in groups:
-        append_prefixes(
+        append_suffixes(
             ["color_discrete_sequence", "attached_color"],
             ["marker"],
             sync_dict
         )
 
-    if 'always_attach' in groups:
-        append_prefixes(
-            ["color_discrete_sequence", "attached_color"],
-            ["marker"],
+    if 'always_attached' in groups:
+        append_suffixes(
+            ["color_discrete_sequence", "attached_color",
+             "pattern_shape_sequence", "attached_pattern"],
+            ["markers"],
             sync_dict
         )
 
     if 'area' in groups:
-        append_prefixes(
+        append_suffixes(
             ["pattern_shape_sequence", "attached_pattern_shape"],
             ["area"],
             sync_dict

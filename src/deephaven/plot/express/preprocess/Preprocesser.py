@@ -25,6 +25,7 @@ class Preprocesser:
         if "preprocess_freq" in self.groups:
             self.preprocesser = FreqPreprocesser(self.args)
         if "always_attached" in self.groups and self.always_attached:
+            print("ergikernfe")
             self.preprocesser = AttachedPreprocesser(self.args, self.always_attached)
 
 

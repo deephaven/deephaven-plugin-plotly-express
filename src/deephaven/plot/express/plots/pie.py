@@ -19,6 +19,8 @@ def pie(
         color: str | list[str] = None,
         hover_name: str = None,
         labels: dict[str, str] = None,
+        pattern_shape_sequence: list[str] = None,
+        pattern_shape_map: dict[str, str] = None,
         color_discrete_sequence: list[str] = None,
         color_discrete_map: dict[str, str] = None,
         title: str = None,
@@ -80,7 +82,7 @@ def pie(
     #if aggregate:
     #    args["table"] = preprocess_aggregate(table, names, values)
 
-    return process_args(args, {"always_attach"}, pop=["aggregate"], px_func=px.pie)
+    return process_args(args, {"always_attached"}, pop=["aggregate"], px_func=px.pie)
 
     return update_wrapper(
         generate_figure(draw=px.pie, call_args=args)

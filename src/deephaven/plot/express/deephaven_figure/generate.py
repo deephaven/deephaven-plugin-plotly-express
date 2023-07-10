@@ -55,6 +55,7 @@ AXIS_SEQUENCE_ARGS = {
     "yaxis_sequence"
 }
 
+
 # these need to be applied to all in wide mode
 SEQUENCE_ARGS_MAP = {
     "symbol_sequence": "marker_symbol",
@@ -67,6 +68,8 @@ SEQUENCE_ARGS_MAP = {
     # different locations
     "color_discrete_sequence_line": "line_color",
     "color_discrete_sequence_marker": "marker_color",
+    "color_discrete_sequence_markers": "marker_colors",
+    "pattern_shape_sequence_markers": "marker_pattern",
     "width_sequence": "line_width",
     "increasing_color_sequence": "increasing_line_color",
     "decreasing_color_sequence": "decreasing_line_color",
@@ -116,6 +119,7 @@ ATTACHED_UPDATE_MAP = {
     "attached_pattern_shape_bar": "marker_pattern_shape",
     "attached_color_line": "line_color",
     "attached_color_marker": "marker_color",
+    "attached_color_markers": "marker_colors",
 }
 
 
@@ -474,8 +478,14 @@ def sequence_generator(
     Yields:
       tuple[str, str]: A tuple of (the name from SEQUENCE_ARGS_MAP, the value)
     """
-    #ls = ls if isinstance(ls, list) else [ls]
-    """if keys:
+
+    ls = ls if isinstance(ls, list) else [ls]
+
+    if arg.endswith("markers"):
+        # if dealing with markers like pie just yield the whole list
+        yield SEQUENCE_ARGS_MAP[arg], ls
+
+    if keys:
         cycled = cycle(ls)
         found = {}
         for val in keys:
@@ -486,7 +496,7 @@ def sequence_generator(
                 elif map and len(val) == 1 and val[0] in map:
                     new_val = map[val[0]]
                 found[val] = new_val
-            yield SEQUENCE_ARGS_MAP[arg], found[val]"""
+            yield SEQUENCE_ARGS_MAP[arg], found[val]
 
     # this should never be hit if keys are specified
     for val in cycle(ls):
@@ -776,7 +786,6 @@ def get_hover_body(
         current_mapping.pop("hovertext")
 
     hover_body = []
-    print(current_mapping)
     if current_partition:
         for col, val in current_partition.items():
             hover_body.append(f"{col}={val}")
@@ -1074,7 +1083,6 @@ def generate_figure(
                                              list(data_cols.values())
                                          ))
 
-    print(filtered_call_args)
     px_fig = draw(data_frame=data_frame, **filtered_call_args)
 
     data_mapping, hover_mapping = create_data_mapping(

@@ -15,7 +15,8 @@ CUSTOM_DATA_ARGS = {
     "attached_pattern_shape_area": "fillpattern/shape",
     "attached_pattern_shape_bar": "marker/pattern/shape",
     "attached_color_line": "line/color",
-    "attached_color_marker": "marker/color"
+    "attached_color_marker": "marker/color",
+    "attached_color_markers": "marker/colors",
 }
 
 # override these data columns with different names
