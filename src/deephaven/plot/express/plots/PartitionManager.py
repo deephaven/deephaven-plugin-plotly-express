@@ -89,6 +89,7 @@ class PartitionManager:
         self.has_color = None
         self.facet_row = None
         self.facet_col = None
+        self.always_attached = {}
 
         if not args.get("color_discrete_sequence"):
             # the colors need to match the plotly qualitative colors so they can be
@@ -99,7 +100,7 @@ class PartitionManager:
 
         self.args = args
         self.groups = groups
-        self.preprocessor = Preprocesser(args, groups)
+        self.preprocessor = None
         self.set_pivot_variables()
         if "supports_lists" in self.groups:
             # or here
@@ -109,6 +110,9 @@ class PartitionManager:
 
 
     def set_pivot_variables(self):
+        if "supports_lists" not in self.groups:
+            return
+
         args = self.args
         table, x, y = args["table"], args["x"], args["y"]
         if isinstance(x, list):
@@ -151,21 +155,28 @@ class PartitionManager:
 
     def is_by(
             self,
-            arg
+            arg,
+            map_val=None
     ):
-        sequence_arg = PARTITION_ARGS[arg][0]
-        if not self.args[sequence_arg]:
-            self.args[sequence_arg] = STYLE_DEFAULTS[arg]
+        seq_arg = PARTITION_ARGS[arg][0]
+        if "always_attached" in self.groups:
+            new_col_name = get_unique_names(self.args.table, [arg])
+            self.always_attached[arg] = (map_val, self.args[seq_arg], new_col_name)
+            # a new column will be constructed so this color is always updated
+            self.args[f"attached_{arg}"] = new_col_name
+        else:
+            if not self.args[seq_arg]:
+                self.args[seq_arg] = STYLE_DEFAULTS[arg]
 
-        map_arg = PARTITION_ARGS[arg][1]
-        map_val = self.args[map_arg]
-        if map_val == "by":
-            self.args[map_arg] = None
-        if isinstance(map_val, tuple):
-            # the first element should be "by" and the map should be in the second, although a tuple with only "by"
-            # in it should also work
-            self.args[map_arg] = map_val[1] if len(map_val) == 2 else None
-        self.args[f"{arg}_by"] = self.args.pop(arg)
+            map_arg = PARTITION_ARGS[arg][1]
+            map_val = self.args[map_arg]
+            if map_val == "by":
+                self.args[map_arg] = None
+            if isinstance(map_val, tuple):
+                # the first element should be "by" and the map should be in the second, although a tuple with only "by"
+                # in it should also work
+                self.args[map_arg] = map_val[1] if len(map_val) == 2 else None
+            self.args[f"{arg}_by"] = self.args.pop(arg)
 
     def handle_plot_by_arg(
             self,
@@ -183,7 +194,7 @@ class PartitionManager:
             map_name = "color_discrete_map"
             map_ = args[map_name]
             if map_ == "by" or isinstance(map_, dict):
-                self.is_by(arg)
+                self.is_by(arg, args[map_name])
             elif map_ == "identity":
                 args.pop(map_name)
                 args["attached_color"] = args.pop("color")
@@ -193,7 +204,7 @@ class PartitionManager:
                 # express directly
                 pass
             elif val:
-                self.is_by(arg)
+                self.is_by(arg, args[map_name])
             elif plot_by_cols and (args.get("color_discrete_sequence") or "color" in self.by_vars):
                 # this needs to be last as setting "color" in any sense will override
                 if not self.args["color_discrete_sequence"]:
@@ -218,12 +229,12 @@ class PartitionManager:
             map_name = PARTITION_ARGS[arg][1]
             map_ = args[map_name]
             if map_ == "by" or isinstance(map_, dict):
-                self.is_by(arg)
+                self.is_by(arg, args[map_name])
             elif map_ == "identity":
                 args.pop(map_name)
                 args[f"attached_{arg}"] = args.pop(arg)
             elif val:
-                self.is_by(arg)
+                self.is_by(arg, args[map_name])
             elif plot_by_cols and (args.get(f"{arg}_sequence") or arg in self.by_vars):
                 # for arguments other than color, plot_by does not kick in unless a sequence is specified
                 args[f"{arg}_by"] = plot_by_cols
@@ -240,13 +251,13 @@ class PartitionManager:
         partition_cols = set()
         partition_map = {}
 
-        self.by_vars = set(args.get("by_vars"))
-        args.pop("by_vars")
+        self.by_vars = set(args.get("by_vars", ()))
+        args.pop("by_vars", None)
 
         if isinstance(args["table"], PartitionedTable):
             partitioned_table = args["table"]
 
-        for arg, val in list(self.args.items()):
+        for arg, val in list(args.items()):
             if (val or args.get("by", None)) and arg in PARTITION_ARGS:
                 arg_by, cols = self.handle_plot_by_arg(arg, val)
                 if cols:
@@ -262,6 +273,9 @@ class PartitionManager:
                 else:
                     self.facet_col = val
 
+        # preprocessor needs to be initialized after the always attached arguments are found
+        self.preprocessor = Preprocesser(args, self.groups, self.always_attached)
+
         if partition_cols:
             if not partitioned_table:
                 partitioned_table = args["table"].partition_by(list(partition_cols))
@@ -275,6 +289,7 @@ class PartitionManager:
                     # so they can be easily used together
                     keys = get_partition_key_column_tuples(key_column_table, val if isinstance(val, list) else [val])
                     sequence, map_ = PARTITION_ARGS[arg]
+                    #args[sequence] = StyleManager(arg=arg, ls=args[sequence], map=args[map_], keys=keys)
                     args[sequence] = {
                         "ls": args[sequence],
                         "map": args[map_],
@@ -283,7 +298,7 @@ class PartitionManager:
                     args.pop(arg_by)
                     args.pop(PARTITION_ARGS[arg][1])
             args.pop("by")
-            args.pop("by_vars")
+            args.pop("by_vars", None)
             return partitioned_table
 
         args.pop("by", None)
@@ -360,17 +375,16 @@ class PartitionManager:
             facet_key = []
             if "current_partition" in args:
                 partition = args["current_partition"]
+                if "preprocess_hist" in self.groups or "preprocess_violin" in self.groups:
+                    # offsetgroup is needed mostly to prevent spacing issues in
+                    # marginals
+                    # not setting the offsetgroup and having both marginals set to box,
+                    # violin, etc. leads to extra spacing in each marginal
+                    # offsetgroup needs to be unique within the subchart as columns
+                    # could have the same name
+                    fig.fig.update_traces(offsetgroup=f"{'-'.join(args['current_partition'])}{i}")
                 facet_key.extend([partition.get(self.facet_col, None), partition.get(self.facet_row, None)])
             facet_key = tuple(facet_key)
-
-            if "preprocess_hist" in self.groups or "preprocess_violin" in self.groups:
-                # offsetgroup is needed mostly to prevent spacing issues in
-                # marginals
-                # not setting the offsetgroup and having both marginals set to box,
-                # violin, etc. leads to extra spacing in each marginal
-                # offsetgroup needs to be unique within the subchart as columns
-                # could have the same name
-                fig.fig.update_traces(offsetgroup=f"{col}{i}")
 
 
             figs.append(fig)

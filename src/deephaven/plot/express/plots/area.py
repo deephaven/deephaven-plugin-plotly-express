@@ -13,7 +13,7 @@ def area(
         table: Table = None,
         x: str | list[str] = None,
         y: str | list[str] = None,
-        plot_by: str | list[str] = None,
+        by: str | list[str] = None,
         line_group: str | list[str] = None,
         color: str | list[str] = None,
         pattern_shape: str | list[str] = None,

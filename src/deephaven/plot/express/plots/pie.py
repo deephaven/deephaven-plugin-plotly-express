@@ -14,9 +14,13 @@ def pie(
         table: Table = None,
         names: str = None,
         values: str = None,
+        by: str | list[str] = None,
+        by_vars: tuple[str] = ("color",),
+        color: str | list[str] = None,
         hover_name: str = None,
         labels: dict[str, str] = None,
         color_discrete_sequence: list[str] = None,
+        color_discrete_map: dict[str, str] = None,
         title: str = None,
         template: str = None,
         opacity: float = None,
@@ -73,10 +77,10 @@ def pie(
     """
     args = locals()
 
-    if aggregate:
-        args["table"] = preprocess_aggregate(table, names, values)
+    #if aggregate:
+    #    args["table"] = preprocess_aggregate(table, names, values)
 
-    update_wrapper = process_args(args, {"marker"}, pop=["aggregate"])
+    return process_args(args, {"always_attach"}, pop=["aggregate"], px_func=px.pie)
 
     return update_wrapper(
         generate_figure(draw=px.pie, call_args=args)

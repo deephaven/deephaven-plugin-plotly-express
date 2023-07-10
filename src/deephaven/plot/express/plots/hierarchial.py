@@ -69,7 +69,7 @@ def treemap(
     """
     args = locals()
 
-    update_wrapper = process_args(args)
+    update_wrapper = process_args(args, group={"always_attach", ""})
 
     return update_wrapper(
         generate_figure(draw=px.treemap, call_args=args)

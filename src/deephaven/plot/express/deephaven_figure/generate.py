@@ -474,8 +474,8 @@ def sequence_generator(
     Yields:
       tuple[str, str]: A tuple of (the name from SEQUENCE_ARGS_MAP, the value)
     """
-    ls = ls if isinstance(ls, list) else [ls]
-    if keys:
+    #ls = ls if isinstance(ls, list) else [ls]
+    """if keys:
         cycled = cycle(ls)
         found = {}
         for val in keys:
@@ -486,7 +486,7 @@ def sequence_generator(
                 elif map and len(val) == 1 and val[0] in map:
                     new_val = map[val[0]]
                 found[val] = new_val
-            yield SEQUENCE_ARGS_MAP[arg], found[val]
+            yield SEQUENCE_ARGS_MAP[arg], found[val]"""
 
     # this should never be hit if keys are specified
     for val in cycle(ls):

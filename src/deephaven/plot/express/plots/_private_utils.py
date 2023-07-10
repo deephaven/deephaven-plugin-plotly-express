@@ -310,6 +310,13 @@ def apply_args_groups(
             sync_dict
         )
 
+    if 'always_attach' in groups:
+        append_prefixes(
+            ["color_discrete_sequence", "attached_color"],
+            ["marker"],
+            sync_dict
+        )
+
     if 'area' in groups:
         append_prefixes(
             ["pattern_shape_sequence", "attached_pattern_shape"],

@@ -11,16 +11,20 @@ from ._private_utils import validate_common_args, preprocess_and_layer, process_
 from ._update_wrapper import default_callback, unsafe_figure_update_wrapper
 from ._layer import layer
 from ..deephaven_figure import DeephavenFigure
-from ..preprocess import preprocess_ecdf, preprocess_violin
+from ..preprocess import preprocess_ecdf
 
 
 def violin(
         table: Table = None,
         x: str | list[str] = None,
         y: str | list[str] = None,
+        by: str | list[str] = None,
+        by_vars: tuple[str] = ("color",),
+        color: str | list[str] = None,
         hover_name: str | list[str] = None,
         labels: dict[str, str] = None,
         color_discrete_sequence: list[str] = None,
+        color_discrete_map: dict[str, str] = None,
         violinmode: str = 'group',
         log_x: bool = False,
         log_y: bool = False,
@@ -95,7 +99,7 @@ def violin(
 
     args = locals()
 
-    update_wrapper = process_args(args, {"marker"})
+    return process_args(args, {"marker", "preprocess_violin", "supports_lists"}, px_func=px.violin)
 
     create_layered = partial(preprocess_and_layer,
                              preprocess_violin,
@@ -110,9 +114,13 @@ def box(
         table: Table = None,
         x: str | list[str] = None,
         y: str | list[str] = None,
+        by: str | list[str] = None,
+        by_vars: tuple[str] = ("color",),
+        color: str | list[str] = None,
         hover_name: str | list[str] = None,
         labels: dict[str, str] = None,
         color_discrete_sequence: list[str] = None,
+        color_discrete_map: dict[str, str] = None,
         boxmode: str = 'group',
         log_x: bool = False,
         log_y: bool = False,
@@ -202,9 +210,13 @@ def strip(
         table: Table = None,
         x: str | list[str] = None,
         y: str | list[str] = None,
+        by: str | list[str] = None,
+        by_vars: tuple[str] = ("color",),
+        color: str | list[str] = None,
         hover_name: str | list[str] = None,
         labels: dict[str, str] = None,
         color_discrete_sequence: list[str] = None,
+        color_discrete_map: dict[str, str] = None,
         stripmode: bool | str = 'group',
         log_x: bool = False,
         log_y: bool = False,
@@ -359,6 +371,7 @@ def histogram(
         x: str | list[str] = None,
         y: str | list[str] = None,
         by: str | list[str] = None,
+        by_vars: tuple[str] = ("color",),
         color: str | list[str] = None,
         pattern_shape: str | list[str] = None,
         hover_name: str | list[str] = None,
