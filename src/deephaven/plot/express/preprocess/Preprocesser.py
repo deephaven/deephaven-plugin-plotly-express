@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from .FreqPreprocesser import FreqPreprocesser
 from .HistPreprocesser import HistPreprocesser
-
+from .ViolinPreprocesser import ViolinPreprocesser
 
 class Preprocesser:
     def __init__(
@@ -19,6 +20,10 @@ class Preprocesser:
     def prepare_preprocess(self):
         if "preprocess_hist" in self.groups:
             self.preprocesser = HistPreprocesser(self.args)
+        if "preprocess_violin" in self.groups:
+            self.preprocesser = ViolinPreprocesser(self.args)
+        if "preprocess_freq" in self.groups:
+            self.preprocesser = FreqPreprocesser(self.args)
 
 
 

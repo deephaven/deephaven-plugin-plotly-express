@@ -1,7 +1,7 @@
 from __future__ import annotations
 import plotly.express as px
 
-from deephaven.table import Table
+from deephaven.table import Table, PartitionedTable
 from deephaven import pandas as dhpd
 from deephaven import merge
 
@@ -81,6 +81,7 @@ class PartitionManager:
             groups
     ):
 
+        self.by_vars = None
         self.list_var = None
         self.cols = None
         self.pivot_vars = None
@@ -172,25 +173,28 @@ class PartitionManager:
             val
     ):
         args = self.args
-        numeric_cols = numeric_column_set(args["table"])
+        table = args["table"]
+        table = table if isinstance(table, Table) else table.constituent_tables[0]
+        numeric_cols = numeric_column_set(table)
 
         plot_by_cols = args.get("by", None)
 
         if arg == "color":
-            map_ = args["color_discrete_map"]
-            if map_ == "by" or (isinstance(map_, tuple) and map_[0] == "by"):
+            map_name = "color_discrete_map"
+            map_ = args[map_name]
+            if map_ == "by" or isinstance(map_, dict):
                 self.is_by(arg)
             elif map_ == "identity":
-                args["attached_color"] = args.pop["color"]
+                args.pop(map_name)
+                args["attached_color"] = args.pop("color")
                 # attached_color
             elif val and self.is_single_numeric_col(val, numeric_cols):
                 # just keep the argument in place so it can be passed to plotly
                 # express directly
-                print("color axis")
                 pass
             elif val:
                 self.is_by(arg)
-            elif plot_by_cols:
+            elif plot_by_cols and (args.get("color_discrete_sequence") or "color" in self.by_vars):
                 # this needs to be last as setting "color" in any sense will override
                 if not self.args["color_discrete_sequence"]:
                     self.args["color_discrete_sequence"] = STYLE_DEFAULTS[arg]
@@ -198,7 +202,7 @@ class PartitionManager:
 
         elif arg == "size":
             map_ = args["size_map"]
-            if map_ == "by" or (isinstance(map_, tuple) and map_[0] == "by"):
+            if map_ == "by" or isinstance(map_, dict):
                 self.is_by(arg)
             elif val and self.is_single_numeric_col(val, numeric_cols):
                 # just keep the argument in place so it can be passed to plotly
@@ -206,19 +210,21 @@ class PartitionManager:
                 pass
             elif val:
                 self.is_by(arg)
-            elif plot_by_cols and args.get("size_sequence"):
+            elif plot_by_cols and (args.get("size_sequence") or "size" in self.by_vars):
                 # for arguments other than color, plot_by does not kick in unless a sequence is specified
                 args["size_by"] = plot_by_cols
 
         elif arg in {"pattern_shape", "symbol", "line_dash", "width"}:
-            map_ = args[PARTITION_ARGS[arg][1]]
-            if map_ == "by" or (isinstance(map_, tuple) and map_[0] == "by"):
+            map_name = PARTITION_ARGS[arg][1]
+            map_ = args[map_name]
+            if map_ == "by" or isinstance(map_, dict):
                 self.is_by(arg)
             elif map_ == "identity":
-                args[f"{arg}_attached"] = args.pop(arg)
+                args.pop(map_name)
+                args[f"attached_{arg}"] = args.pop(arg)
             elif val:
                 self.is_by(arg)
-            elif plot_by_cols and args.get(f"{arg}_sequence"):
+            elif plot_by_cols and (args.get(f"{arg}_sequence") or arg in self.by_vars):
                 # for arguments other than color, plot_by does not kick in unless a sequence is specified
                 args[f"{arg}_by"] = plot_by_cols
 
@@ -227,10 +233,19 @@ class PartitionManager:
     def process_partitions(
             self
     ):
+
         args = self.args
 
+        partitioned_table = None
         partition_cols = set()
         partition_map = {}
+
+        self.by_vars = set(args.get("by_vars"))
+        args.pop("by_vars")
+
+        if isinstance(args["table"], PartitionedTable):
+            partitioned_table = args["table"]
+
         for arg, val in list(self.args.items()):
             if (val or args.get("by", None)) and arg in PARTITION_ARGS:
                 arg_by, cols = self.handle_plot_by_arg(arg, val)
@@ -248,7 +263,9 @@ class PartitionManager:
                     self.facet_col = val
 
         if partition_cols:
-            partitioned_table = args["table"].partition_by(list(partition_cols))
+            if not partitioned_table:
+                partitioned_table = args["table"].partition_by(list(partition_cols))
+
             key_column_table = dhpd.to_pandas(partitioned_table.table.select_distinct(partitioned_table.key_columns))
             for arg_by, val in partition_map.items():
                 # remove "by" from arg
@@ -266,9 +283,11 @@ class PartitionManager:
                     args.pop(arg_by)
                     args.pop(PARTITION_ARGS[arg][1])
             args.pop("by")
+            args.pop("by_vars")
             return partitioned_table
 
         args.pop("by", None)
+        args.pop("by_vars", None)
         return args["table"]
 
     def build_ternary_chain(self, cols):
@@ -326,16 +345,14 @@ class PartitionManager:
                 args["current_partition"] = current_partition
 
                 args["table"] = table
-                print(args)
                 yield args
         else:
             yield args
 
-
     def create_figure(self):
         trace_generator = None
         figs = []
-        for args in self.partition_generator():
+        for i, args in enumerate(self.partition_generator()):
             fig = self.draw_figure(call_args=args, trace_generator=trace_generator)
             if not trace_generator:
                 trace_generator = fig.trace_generator
@@ -346,8 +363,26 @@ class PartitionManager:
                 facet_key.extend([partition.get(self.facet_col, None), partition.get(self.facet_row, None)])
             facet_key = tuple(facet_key)
 
+            if "preprocess_hist" in self.groups or "preprocess_violin" in self.groups:
+                # offsetgroup is needed mostly to prevent spacing issues in
+                # marginals
+                # not setting the offsetgroup and having both marginals set to box,
+                # violin, etc. leads to extra spacing in each marginal
+                # offsetgroup needs to be unique within the subchart as columns
+                # could have the same name
+                fig.fig.update_traces(offsetgroup=f"{col}{i}")
+
+
             figs.append(fig)
+
         new_fig = layer(*figs)
+
+        if "preprocess_hist" in self.groups or "preprocess_violin" in self.groups:
+            if self.list_var:
+                new_fig.fig.update_layout(legend_tracegroupgap=0)
+            else:
+                new_fig.fig.update_layout(showlegend=False)
+
         if self.has_color is False:
             new_fig.has_color = False
         return layer(*figs)

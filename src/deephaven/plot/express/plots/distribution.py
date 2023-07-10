@@ -420,7 +420,7 @@ def histogram(
         If 'relative', bars are stacked. If
         'overlay', bars are drawn on top of each other. If 'group', bars are
         drawn next to each other.
-      barnorm:: str:  (Default value = None)
+      barnorm: str:  (Default value = None)
         If 'fraction', the value of the bar is divided by all bars at that
         location. If 'percentage', the result is the same but multiplied by
         100.

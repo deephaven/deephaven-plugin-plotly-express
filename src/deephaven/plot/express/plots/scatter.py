@@ -19,6 +19,7 @@ def scatter(
         error_y: str | list[str] = None,
         error_y_minus: str | list[str] = None,
         by: str | list[str] = None,
+        by_vars: tuple[str] = ("color",),
         line_group: str | list[str] = None,
         color: str | list[str] = None,
         symbol: str | list[str] = None,
@@ -48,6 +49,7 @@ def scatter(
         xaxis_titles: list[str] = None,
         title: str = None,
         template: str = None,
+        render_mode="webgl",
         unsafe_update_figure: callable = default_callback
 ) -> DeephavenFigure:
     """Returns a scatter chart
@@ -160,11 +162,12 @@ def scatter(
       A DeephavenFigure that contains the scatter chart
 
     """
+
     args = locals()
 
     marg_data, marg_style = get_marg_args(args)
 
-    return process_args(args, {"scatter", "supports_lists", "both_marginals"}, px_func=px.scatter)
+    return process_args(args, {"scatter", "supports_lists", "both_marginals"}, px_func=px.scatter, )
 
     return update_wrapper(
         attach_marginals(

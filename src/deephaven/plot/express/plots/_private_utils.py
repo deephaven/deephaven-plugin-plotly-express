@@ -5,7 +5,7 @@ from collections.abc import Generator
 
 import plotly.express as px
 
-from deephaven.table import Table
+from deephaven.table import Table, PartitionedTable
 
 from ._layer import layer
 from .PartitionManager import PartitionManager
@@ -31,7 +31,7 @@ def validate_common_args(
       args: dict: The args to validate
 
     """
-    if not isinstance(args["table"], Table):
+    if not isinstance(args["table"], (Table, PartitionedTable)):
         raise ValueError("Argument table is not of type Table")
 
 

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from deephaven import agg, empty_table, new_table
+
+from .UnivariatePreprocesser import UnivariatePreprocesser
 from ..shared import get_unique_names
 from deephaven.column import long_col
 from deephaven.updateby import cum_sum
@@ -42,19 +44,11 @@ def get_aggs(
     return ([f"{base}{column}={column}" for column in columns],
             ', '.join([f"{base}{column}" for column in columns]))
 
-class HistPreprocesser:
-    def __init__(
-            self,
-            args,
-    ):
+class HistPreprocesser(UnivariatePreprocesser):
+    def __init__(self, args):
+        super().__init__(args)
         self.range_table = None
         self.names = None
-        self.args = args
-        self.var = "x" if args["x"] else "y"
-        self.other_var = "y" if self.var == "x" else "x"
-        self.col_val = args[self.var]
-        self.cols = self.col_val if isinstance(self.col_val, list) else [self.col_val]
-        self.table = args["table"]
         self.nbins = args.pop("nbins")
         self.range_bins = args.pop("range_bins")
         self.histfunc = args.pop("histfunc")
@@ -62,7 +56,6 @@ class HistPreprocesser:
         self.histnorm = args.pop("histnorm")
         self.cumulative = args.pop("cumulative")
         self.prepare_preprocess()
-        pass
 
     def prepare_preprocess(self):
         self.names = get_unique_names(self.args["table"], ["range_index", "range",

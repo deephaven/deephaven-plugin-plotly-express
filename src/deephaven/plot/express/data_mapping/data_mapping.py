@@ -219,6 +219,7 @@ def create_data_mapping(
         the hover mapping
 
     """
+    print(data_dict, custom_call_args)
     data_dict = remove_unmapped_args(data_dict)
 
     # in case of finance, zip instead of take product

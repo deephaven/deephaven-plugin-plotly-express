@@ -114,8 +114,8 @@ ATTACHED_UPDATE_MAP = {
     "hover_name": "hovertext",
     "attached_pattern_shape_area": "fillpattern_shape",
     "attached_pattern_shape_bar": "marker_pattern_shape",
-    "attached_color": "line_color",
-    "attached_line": "marker_color",
+    "attached_color_line": "line_color",
+    "attached_color_marker": "marker_color",
 }
 
 
@@ -776,11 +776,13 @@ def get_hover_body(
         current_mapping.pop("hovertext")
 
     hover_body = []
+    print(current_mapping)
     if current_partition:
         for col, val in current_partition.items():
             hover_body.append(f"{col}={val}")
     for var, data_col in current_mapping.items():
         # error bars are automatically displayed with the associated variable
+        # attached values do not show up
         if var.startswith("error"):
             continue
         # "plural" vars ending with s need the s removed in the hover mapping

@@ -12,6 +12,10 @@ CUSTOM_DATA_ARGS = {
     "size": "marker/size",
     "text": "text",
     "hover_name": "hovertext",
+    "attached_pattern_shape_area": "fillpattern/shape",
+    "attached_pattern_shape_bar": "marker/pattern/shape",
+    "attached_color_line": "line/color",
+    "attached_color_marker": "marker/color"
 }
 
 # override these data columns with different names

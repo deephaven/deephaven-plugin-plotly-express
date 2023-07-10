@@ -52,29 +52,6 @@ def time_length(
     return nanos_to_millis(diff_nanos(start, end))
 
 
-def preprocess_frequency_bar(
-        table: Table,
-        column: str
-) -> tuple[Table, str, str]:
-    """Preprocess frequency bar params into an appropriate table
-    This just sums each value by count
-
-    Args:
-      table: Table:
-        The table to pull data from
-      column: str:
-        The column that has counts applied
-
-    Returns:
-      tuple[Table, str, str]: A tuple containing
-        (the new table, the original column name, the name of the count column)
-
-    """
-    names = get_unique_names(table, ["count"])
-
-    return table.view([column]).count_by(names["count"], by=column), column, names["count"]
-
-
 def preprocess_timeline(
         table: Table,
         x_start: str,
@@ -108,35 +85,6 @@ def preprocess_timeline(
                             f"{names['Time_Diff']} = time_length({x_start}, {x_end})",
                             f"{y}"])
     return new_table, names['Time_Diff']
-
-
-def preprocess_violin(
-        table: Table,
-        column: str
-) -> tuple[Table, str, None]:
-    """Preprocess the violin (or box or strip) params into an appropriate table
-    For each column, the data needs to be reshaped so that there is a column
-    that contains the column value.
-
-    Args:
-      table: Table:
-        The table to pull data from
-      column: str:
-        The column to use for violin data
-
-    Returns:
-      tuple[Table, str, None]:
-        A tuple of new_table, column values, and None
-
-    """
-    # also used for box and strip
-    new_table = table.view([
-        f"{column} = {column}"
-    ])
-    # The names are None as a third tuple value is required for
-    # preprocess_and_layer but putting the names in the figure
-    # breaks violinmode=overlay
-    return new_table, column, None
 
 
 def preprocess_ecdf(
