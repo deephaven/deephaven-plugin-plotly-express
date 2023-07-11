@@ -221,7 +221,6 @@ def split_args(
     custom_call_args = {}
 
     for arg, val in call_args.items():
-        print(arg, val)
         if val is not None:
             if arg in CUSTOM_ARGS:
                 custom_call_args[arg] = val

@@ -359,6 +359,12 @@ class PartitionManager:
 
                 args["table"] = table
                 yield args
+        elif "preprocess_hist" in self.groups or "preprocess_freq" in self.groups:
+            # still need to preprocess the base table
+            table, arg_update = list(self.preprocessor.preprocess_partitioned_tables([args["table"]]))[0]
+            args["table"] = table
+            args.update(arg_update)
+            yield args
         else:
             yield args
 
@@ -366,7 +372,6 @@ class PartitionManager:
         trace_generator = None
         figs = []
         for i, args in enumerate(self.partition_generator()):
-            print(args)
             fig = self.draw_figure(call_args=args, trace_generator=trace_generator)
             if not trace_generator:
                 trace_generator = fig.trace_generator

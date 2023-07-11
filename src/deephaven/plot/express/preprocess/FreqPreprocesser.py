@@ -26,6 +26,7 @@ class FreqPreprocesser(UnivariatePreprocesser):
             (the new table, the original column name, the name of the count column)
 
         """
+        column = self.col_val if not column else column
 
         names = get_unique_names(self.table, ["count"])
 
