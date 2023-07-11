@@ -17,13 +17,15 @@ CUSTOM_DATA_ARGS = {
     "attached_color_line": "line/color",
     "attached_color_marker": "marker/color",
     "attached_color_markers": "marker/colors",
+    "attached_pattern_shape_markers": "marker/pattern/shape",
 }
 
 # override these data columns with different names
 OVERRIDES = {
     "names": "labels",
     "x_start": "base",
-    "color": "marker/color"
+    "color": "marker/color",
+    "colors": "marker/colors"
 }
 
 # x_end is not used, the calculations are made in preprocessing step and passed to x

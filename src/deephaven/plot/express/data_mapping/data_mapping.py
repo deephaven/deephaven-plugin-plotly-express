@@ -219,7 +219,11 @@ def create_data_mapping(
         the hover mapping
 
     """
-    print(data_dict, custom_call_args)
+    # color is needed to create the color axis, but might need to set it to
+    # colors if dealing with some types of charts
+    if "colors" in custom_call_args:
+        data_dict["colors"] = data_dict.pop("color")
+
     data_dict = remove_unmapped_args(data_dict)
 
     # in case of finance, zip instead of take product

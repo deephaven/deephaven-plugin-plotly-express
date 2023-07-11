@@ -313,7 +313,7 @@ def apply_args_groups(
     if 'always_attached' in groups:
         append_suffixes(
             ["color_discrete_sequence", "attached_color",
-             "pattern_shape_sequence", "attached_pattern"],
+             "pattern_shape_sequence", "attached_pattern_shape"],
             ["markers"],
             sync_dict
         )

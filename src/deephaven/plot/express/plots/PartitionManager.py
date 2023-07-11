@@ -137,15 +137,11 @@ class PartitionManager:
         args = self.args
         table = args["table"]
 
-        print("converting to long mode")
-
         # if there is no plot by arg, the variable column becomes it
         if not self.args.get("by", None):
             args["by"] = self.pivot_vars["variable"]
 
         args["table"] = self.to_long_mode(table, self.cols)
-
-        print("converted")
 
     def is_single_numeric_col(
             self,
@@ -165,6 +161,7 @@ class PartitionManager:
             self.always_attached[(arg, self.args[arg])] = (map_val, self.args[seq_arg], new_col)
             # a new column will be constructed so this color is always updated
             self.args[f"attached_{arg}"] = new_col
+            self.args.pop(arg)
         else:
             if not self.args[seq_arg]:
                 self.args[seq_arg] = STYLE_DEFAULTS[arg]
@@ -199,8 +196,9 @@ class PartitionManager:
             elif map_ == "identity":
                 args.pop(map_name)
                 args["attached_color"] = args.pop("color")
-                # attached_color
             elif val and self.is_single_numeric_col(val, numeric_cols):
+                if "always_attached" in self.groups:
+                    args["colors"] = args.pop("color")
                 # just keep the argument in place so it can be passed to plotly
                 # express directly
                 pass
@@ -290,7 +288,6 @@ class PartitionManager:
                     # so they can be easily used together
                     keys = get_partition_key_column_tuples(key_column_table, val if isinstance(val, list) else [val])
                     sequence, map_ = PARTITION_ARGS[arg]
-                    #args[sequence] = StyleManager(arg=arg, ls=args[sequence], map=args[map_], keys=keys)
                     args[sequence] = {
                         "ls": args[sequence],
                         "map": args[map_],
@@ -319,7 +316,6 @@ class PartitionManager:
     def to_long_mode(self, table, cols):
         new_tables = []
         for col in cols:
-            print("appending", col)
             new_tables.append(table.update_view(f"{self.pivot_vars['variable']} = `{col}`"))
 
         merged = merge(new_tables)

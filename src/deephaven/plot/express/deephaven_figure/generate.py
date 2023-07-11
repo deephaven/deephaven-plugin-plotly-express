@@ -69,7 +69,7 @@ SEQUENCE_ARGS_MAP = {
     "color_discrete_sequence_line": "line_color",
     "color_discrete_sequence_marker": "marker_color",
     "color_discrete_sequence_markers": "marker_colors",
-    "pattern_shape_sequence_markers": "marker_pattern",
+    "pattern_shape_sequence_markers": "marker_pattern_shape",
     "width_sequence": "line_width",
     "increasing_color_sequence": "increasing_line_color",
     "decreasing_color_sequence": "decreasing_line_color",
@@ -101,7 +101,8 @@ CUSTOM_ARGS = {
     "labels",
     "hist_val_name",
     "pivot_vars",
-    "current_partition"
+    "current_partition",
+    "colors"
 }
 
 # these are columns that are "attached" sequentially to the traces
@@ -120,6 +121,7 @@ ATTACHED_UPDATE_MAP = {
     "attached_color_line": "line_color",
     "attached_color_marker": "marker_color",
     "attached_color_markers": "marker_colors",
+    "attached_pattern_shape_markers": "marker_pattern_shape",
 }
 
 
@@ -219,12 +221,16 @@ def split_args(
     custom_call_args = {}
 
     for arg, val in call_args.items():
+        print(arg, val)
         if val is not None:
             if arg in CUSTOM_ARGS:
                 custom_call_args[arg] = val
                 if arg == "labels":
                     # plotly express still handles most labeling
                     new_call_args[arg] = val
+                elif arg == "colors":
+                    # plotly needs this to create the color axis
+                    new_call_args["color"] = val
             elif arg.endswith('_scene'):
                 # this scene check needs to be before the range check to
                 # ensure scene args don't get converted to a list
