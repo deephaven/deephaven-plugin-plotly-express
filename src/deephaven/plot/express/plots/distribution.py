@@ -101,14 +101,6 @@ def violin(
 
     return process_args(args, {"marker", "preprocess_violin", "supports_lists"}, px_func=px.violin)
 
-    create_layered = partial(preprocess_and_layer,
-                             preprocess_violin,
-                             px.violin, args)
-
-    return update_wrapper(
-        create_layered("x") if x else create_layered("y")
-    )
-
 
 def box(
         table: Table = None,
@@ -195,15 +187,7 @@ def box(
 
     args = locals()
 
-    update_wrapper = process_args(args, {"marker"})
-
-    create_layered = partial(preprocess_and_layer,
-                             preprocess_violin,
-                             px.box, args)
-
-    return update_wrapper(
-        create_layered("x") if x else create_layered("y")
-    )
+    return process_args(args, {"marker", "preprocess_violin", "supports_lists"}, px_func=px.box)
 
 
 def strip(
@@ -283,15 +267,7 @@ def strip(
 
     args = locals()
 
-    update_wrapper = process_args(args, {"marker"})
-
-    create_layered = partial(preprocess_and_layer,
-                             preprocess_violin,
-                             px.strip, args)
-
-    return update_wrapper(
-        create_layered("x") if x else create_layered("y")
-    )
+    return process_args(args, {"marker", "preprocess_violin", "supports_lists"}, px_func=px.strip)
 
 
 def _ecdf(

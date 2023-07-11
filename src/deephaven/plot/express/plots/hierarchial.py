@@ -6,8 +6,7 @@ from deephaven.table import Table
 
 from ._private_utils import process_args
 from ._update_wrapper import default_callback
-from ..deephaven_figure import generate_figure, DeephavenFigure
-from ..preprocess import preprocess_aggregate
+from ..deephaven_figure import DeephavenFigure
 
 
 def treemap(
@@ -16,7 +15,13 @@ def treemap(
         values: str = None,
         parents: str = None,
         ids: str = None,
+        color: str | list[str] = None,
         hover_name: str | list[str] = None,
+        color_discrete_sequence: list[str] = None,
+        color_discrete_map: dict[str, str] = None,
+        color_continuous_scale=None,
+        range_color=None,
+        color_continuous_midpoint=None,
         labels: dict[str, str] = None,
         title: str = None,
         template: str = None,
@@ -69,11 +74,7 @@ def treemap(
     """
     args = locals()
 
-    update_wrapper = process_args(args, group={"always_attach", ""})
-
-    return update_wrapper(
-        generate_figure(draw=px.treemap, call_args=args)
-    )
+    return process_args(args, {"always_attached"}, px_func=px.treemap)
 
 
 def sunburst(
@@ -82,7 +83,13 @@ def sunburst(
         values: str = None,
         parents: str = None,
         ids: str = None,
+        color: str | list[str] = None,
         hover_name: str | list[str] = None,
+        color_discrete_sequence: list[str] = None,
+        color_discrete_map: dict[str, str] = None,
+        color_continuous_scale=None,
+        range_color=None,
+        color_continuous_midpoint=None,
         labels: dict[str, str] = None,
         title: str = None,
         template: str = None,
@@ -135,11 +142,7 @@ def sunburst(
     """
     args = locals()
 
-    update_wrapper = process_args(args)
-
-    return update_wrapper(
-        generate_figure(draw=px.sunburst, call_args=args)
-    )
+    return process_args(args, {"always_attached"}, px_func=px.sunburst)
 
 
 def icicle(
@@ -148,7 +151,13 @@ def icicle(
         values: str = None,
         parents: str = None,
         ids: str = None,
+        color: str | list[str] = None,
         hover_name: str | list[str] = None,
+        color_discrete_sequence: list[str] = None,
+        color_discrete_map: dict[str, str] = None,
+        color_continuous_scale=None,
+        range_color=None,
+        color_continuous_midpoint=None,
         labels: dict[str, str] = None,
         title: str = None,
         template: str = None,
@@ -201,11 +210,7 @@ def icicle(
     """
     args = locals()
 
-    update_wrapper = process_args(args)
-
-    return update_wrapper(
-        generate_figure(draw=px.icicle, call_args=args)
-    )
+    return process_args(args, {"always_attached"}, px_func=px.icicle)
 
 
 def funnel(
@@ -215,7 +220,9 @@ def funnel(
         text: str | list[str] = None,
         hover_name: str | list[str] = None,
         labels: dict[str, str] = None,
+        color: str | list[str] = None,
         color_discrete_sequence: list[str] = None,
+        color_discrete_map: dict[str, str] = None,
         opacity: float = None,
         orientation: str = None,
         log_x: bool = False,
@@ -280,11 +287,7 @@ def funnel(
     """
     args = locals()
 
-    update_wrapper = process_args(args, {"marker"})
-
-    return update_wrapper(
-        generate_figure(draw=px.funnel, call_args=args)
-    )
+    return process_args(args, {"marker", "supports_lists"}, px_func=px.funnel)
 
 
 def funnel_area(
@@ -293,7 +296,9 @@ def funnel_area(
         values: str = None,
         hover_name: str = None,
         labels: dict[str, str] = None,
+        color: str | list[str] = None,
         color_discrete_sequence: list[str] = None,
+        color_discrete_map: dict[str, str] = None,
         title: str = None,
         template: str = None,
         opacity: float = None,
@@ -347,11 +352,4 @@ def funnel_area(
 
     args = locals()
 
-    if aggregate:
-        args["table"] = preprocess_aggregate(table, names, values)
-
-    update_wrapper = process_args(args, {"marker"}, pop=["aggregate"])
-
-    return update_wrapper(
-        generate_figure(draw=px.funnel_area, call_args=args)
-    )
+    return process_args(args, {"always_attached"}, px_func=px.funnel_area)

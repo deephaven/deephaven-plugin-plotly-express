@@ -8,31 +8,6 @@ from deephaven.updateby import cum_sum
 from ..shared import get_unique_names
 
 
-
-def preprocess_aggregate(
-        table: Table,
-        names: str,
-        values: str
-) -> Table:
-    """Preprocess a table passed to pie or funnel_area to ensure it only has
-     1 row per name
-
-    Args:
-      table: Table:
-        The table to preprocess
-      names:  str:
-        The column to use for names
-      values:  str:
-        The column to use for names
-
-    Returns:
-      Table: A new table that contains a single row per name and columns of
-      specified names and values
-
-    """
-    return table.view([names, values]).sum_by(names)
-
-
 def time_length(
         start: str,
         end: str

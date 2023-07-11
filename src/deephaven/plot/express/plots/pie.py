@@ -7,27 +7,21 @@ from deephaven.table import Table
 from ._private_utils import process_args
 from ._update_wrapper import default_callback
 from ..deephaven_figure import generate_figure, DeephavenFigure
-from ..preprocess import preprocess_aggregate
 
 
 def pie(
         table: Table = None,
         names: str = None,
         values: str = None,
-        by: str | list[str] = None,
-        by_vars: tuple[str] = ("color",),
         color: str | list[str] = None,
         hover_name: str = None,
         labels: dict[str, str] = None,
-        pattern_shape_sequence: list[str] = None,
-        pattern_shape_map: dict[str, str] = None,
         color_discrete_sequence: list[str] = None,
         color_discrete_map: dict[str, str] = None,
         title: str = None,
         template: str = None,
         opacity: float = None,
         hole: float = None,
-        aggregate: bool = True,
         unsafe_update_figure: callable = default_callback
 ) -> DeephavenFigure:
     """Returns a pie chart
@@ -62,8 +56,6 @@ def pie(
         and 1 is completely opaque.
       hole: float:  (Default value = None)
         Fraction of the radius to cut out of the center of the pie.
-      aggregate: Default True, aggregate the table names by total values. Can
-        be set to False if the table is already aggregated by name.
       unsafe_update_figure: callable:  (Default value = default_callback)
         An update function that takes a plotly figure
         as an argument and optionally returns a plotly figure. If a figure is
@@ -79,11 +71,4 @@ def pie(
     """
     args = locals()
 
-    #if aggregate:
-    #    args["table"] = preprocess_aggregate(table, names, values)
-
-    return process_args(args, {"always_attached"}, pop=["aggregate"], px_func=px.pie)
-
-    return update_wrapper(
-        generate_figure(draw=px.pie, call_args=args)
-    )
+    return process_args(args, {"always_attached"}, px_func=px.pie)

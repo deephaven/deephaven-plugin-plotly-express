@@ -14,9 +14,9 @@ class AttachedPreprocesser():
     def prepare_preprocess(self):
         # create new columns
         table = self.args["table"]
-        for col, (map, ls, new_col) in self.always_attached.items():
+        for (arg, col), (map, ls, new_col) in self.always_attached.items():
             manager_col = get_unique_names(table, [f"{new_col}_manager"])[f"{new_col}_manager"]
-            #todo: set to names by default if color not set
+            #todo: don't just use col as key so multiple vars can use same column
             names_col = self.args[col]
             style_manager = StyleManager(map=map, ls=ls)
 
@@ -26,8 +26,4 @@ class AttachedPreprocesser():
             ])
 
         self.args["table"] = table
-
-
-    def preprocess_partitioned_tables(self, tables, column=None):
-        pass
 

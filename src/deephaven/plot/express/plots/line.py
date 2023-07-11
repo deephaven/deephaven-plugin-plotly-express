@@ -6,10 +6,8 @@ from deephaven.table import Table
 
 from ._private_utils import process_args
 from ._update_wrapper import default_callback
-from ..deephaven_figure import generate_figure, DeephavenFigure
+from ..deephaven_figure import DeephavenFigure
 
-
-# TODO: support line_shape as a list?
 def line(
         table: Table = None,
         x: str | list[str] = None,
@@ -18,10 +16,10 @@ def line(
         error_x_minus: str | list[str] = None,
         error_y: str | list[str] = None,
         error_y_minus: str | list[str] = None,
+        plot_by: str | list[str] = None,
+        by_vars: tuple[str] = ("color",),
         size: str | list[str] = None,
         text: str | list[str] = None,
-        plot_by: str | list[str] = None,
-        line_group: str | list[str] = None,
         line_dash: str | list[str] = None,
         width: str  | list[str] = None,
         color: str | list[str] = None,
@@ -169,10 +167,6 @@ def line(
 
     return process_args(args, {"line", "supports_lists"}, px_func=px.line)
 
-    return update_wrapper(
-        generate_figure(draw=px.line, call_args=args)
-    )
-
 
 def line_3d(
         table: Table = None,
@@ -185,13 +179,20 @@ def line_3d(
         error_y_minus: str = None,
         error_z: str = None,
         error_z_minus: str = None,
+        by: str | list[str] = None,
+        by_vars: tuple[str] = ("color",),
         size: str = None,
         text: str = None,
         hover_name: str = None,
         labels: dict[str, str] = None,
         color_discrete_sequence: list[str] = None,
+        color_discrete_map: dict[str, str] = None,
+        line_dash_sequence: list[str] = None,
+        line_dash_map: dict[str, str] = None,
         symbol_sequence: list[str] = None,
+        symbol_map: dict[str, str] = None,
         size_sequence: list[int] = None,
+        size_map: dict[str, str] = None,
         markers: bool = False,
         log_x: bool = False,
         log_y: bool = False,
@@ -298,24 +299,26 @@ def line_3d(
     """
     args = locals()
 
-    update_wrapper = process_args(args, {"line", "scene"})
-
-    return update_wrapper(
-        generate_figure(draw=px.line_3d, call_args=args)
-    )
-
+    return process_args(args, {"line", "scene"}, px_func=px.line_3d)
 
 def line_polar(
         table: Table = None,
         r: str = None,
         theta: str = None,
+        by: str | list[str] = None,
+        by_vars: tuple[str] = ("color",),
         size: str = None,
         text: str = None,
         hover_name: str = None,
         labels: dict[str, str] = None,
         color_discrete_sequence: list[str] = None,
+        color_discrete_map: dict[str, str] = None,
+        line_dash_sequence: list[str] = None,
+        line_dash_map: dict[str, str] = None,
         symbol_sequence: list[str] = None,
+        symbol_map: dict[str, str] = None,
         size_sequence: list[int] = None,
+        size_map: dict[str, str] = None,
         markers: bool = False,
         direction: str = 'clockwise',
         start_angle: int = 90,
@@ -397,11 +400,7 @@ def line_polar(
 
     args = locals()
 
-    update_wrapper = process_args(args, {"line"})
-
-    return update_wrapper(
-        generate_figure(draw=px.line_polar, call_args=args)
-    )
+    return process_args(args, {"line"}, px_func=px.line_polar)
 
 
 def line_ternary(
@@ -409,13 +408,20 @@ def line_ternary(
         a: str = None,
         b: str = None,
         c: str = None,
+        by: str | list[str] = None,
+        by_vars: tuple[str] = ("color",),
         size: str = None,
         text: str = None,
         hover_name: str = None,
         labels: dict[str, str] = None,
         color_discrete_sequence: list[str] = None,
+        color_discrete_map: dict[str, str] = None,
+        line_dash_sequence: list[str] = None,
+        line_dash_map: dict[str, str] = None,
         symbol_sequence: list[str] = None,
+        symbol_map: dict[str, str] = None,
         size_sequence: list[int] = None,
+        size_map: dict[str, str] = None,
         markers: bool = False,
         line_shape: str = 'linear',
         title: str = None,
@@ -477,8 +483,4 @@ def line_ternary(
     """
     args = locals()
 
-    update_wrapper = process_args(args, {"line"})
-
-    return update_wrapper(
-        generate_figure(draw=px.line_ternary, call_args=args)
-    )
+    return process_args(args, {"line"}, px_func=px.line_ternary)

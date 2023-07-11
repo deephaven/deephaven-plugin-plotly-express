@@ -167,7 +167,7 @@ def scatter(
 
     marg_data, marg_style = get_marg_args(args)
 
-    return process_args(args, {"scatter", "supports_lists", "both_marginals"}, px_func=px.scatter, )
+    return process_args(args, {"scatter", "supports_lists", "both_marginals"}, px_func=px.scatter)
 
     return update_wrapper(
         attach_marginals(
@@ -190,13 +190,22 @@ def scatter_3d(
         error_y_minus: str = None,
         error_z: str = None,
         error_z_minus: str = None,
+        by: str | list[str] = None,
+        by_vars: tuple[str] = ("color",),
+
         size: str = None,
         text: str = None,
         hover_name: str = None,
         labels: dict[str, str] = None,
         color_discrete_sequence: list[str] = None,
+        color_discrete_map: dict[str, str] = None,
         symbol_sequence: list[str] = None,
+        symbol_map: dict[str, str] = None,
         size_sequence: list[int] = None,
+        size_map: dict[str, str] = None,
+        color_continuous_scale=None,
+        range_color=None,
+        color_continuous_midpoint=None,
         opacity: float = None,
         log_x: bool = False,
         log_y: bool = False,
@@ -304,24 +313,28 @@ def scatter_3d(
     """
     args = locals()
 
-    update_wrapper = process_args(args, {"scatter", "scene"})
-
-    return update_wrapper(
-        generate_figure(draw=px.scatter_3d, call_args=args)
-    )
+    return process_args(args, {"scatter", "scene"}, px_func=px.scatter_3d)
 
 
 def scatter_polar(
         table: Table = None,
         r: str = None,
         theta: str = None,
+        by: str | list[str] = None,
+        by_vars: tuple[str] = ("color",),
         size: str = None,
         text: str = None,
         hover_name: str = None,
         labels: dict[str, str] = None,
         color_discrete_sequence: list[str] = None,
+        color_discrete_map: dict[str, str] = None,
         symbol_sequence: list[str] = None,
+        symbol_map: dict[str, str] = None,
         size_sequence: list[int] = None,
+        size_map: dict[str, str] = None,
+        color_continuous_scale=None,
+        range_color=None,
+        color_continuous_midpoint=None,
         opacity: float = None,
         direction: str = 'clockwise',
         start_angle: int = 90,
@@ -396,11 +409,7 @@ def scatter_polar(
     """
     args = locals()
 
-    update_wrapper = process_args(args, {"scatter"})
-
-    return update_wrapper(
-        generate_figure(draw=px.scatter_polar, call_args=args)
-    )
+    return process_args(args, {"scatter"}, px_func=px.scatter_polar)
 
 
 def scatter_ternary(
@@ -408,13 +417,21 @@ def scatter_ternary(
         a: str = None,
         b: str = None,
         c: str = None,
+        by: str | list[str] = None,
+        by_vars: tuple[str] = ("color",),
         size: str = None,
         text: str= None,
         hover_name: str = None,
         labels: dict[str, str] = None,
         color_discrete_sequence: list[str] = None,
+        color_discrete_map: dict[str, str] = None,
         symbol_sequence: list[str] = None,
+        symbol_map: dict[str, str] = None,
         size_sequence: list[int] = None,
+        size_map: dict[str, str] = None,
+        color_continuous_scale=None,
+        range_color=None,
+        color_continuous_midpoint=None,
         opacity: float = None,
         title: str = None,
         template: str = None,
@@ -474,11 +491,7 @@ def scatter_ternary(
     """
     args = locals()
 
-    update_wrapper = process_args(args, {"scatter"})
-
-    return update_wrapper(
-        generate_figure(draw=px.scatter_ternary, call_args=args)
-    )
+    return process_args(args, {"scatter"}, px_func=px.scatter_ternary)
 
 
 def _scatter_matrix():

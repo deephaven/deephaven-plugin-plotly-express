@@ -14,6 +14,7 @@ def area(
         x: str | list[str] = None,
         y: str | list[str] = None,
         by: str | list[str] = None,
+        by_vars: tuple[str] = ("color",),
         line_group: str | list[str] = None,
         color: str | list[str] = None,
         pattern_shape: str | list[str] = None,
@@ -33,7 +34,6 @@ def area(
         xaxis_sequence: list[str] = None,
         yaxis_sequence: list[str] = None,
         markers: bool = False,
-        # todo: groupnorm in engine
         groupnorm: str = None,
         log_x: bool | list[bool] = False,
         log_y: bool | list[bool] = False,
@@ -145,21 +145,4 @@ def area(
     """
     args = locals()
 
-    # partitioned args must be first so colors are properly reassigned
-    #partitioned = process_partitions(args)
-
-    #partitioned_args = partition_generator(args, partitioned)
-
-    #update_wrapper = process_args(args, {"area", "line"})
-
-    #draw_figure = partial(generate_figure, draw=px.area)
     return process_args(args, {"area", "line", "supports_lists"}, px_func = px.area)
-"""
-    trace_generator = None
-    figs = []
-    for arg in partitioned_args:
-        fig = draw_figure(call_args=args, trace_generator=trace_generator)
-        if not trace_generator:
-            trace_generator = fig.trace_generator
-        figs.append(fig)
-"""

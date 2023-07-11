@@ -12,7 +12,6 @@ from ..shared import get_unique_names
 
 PARTITION_ARGS = {
     "by": None,
-    "line_group": None,  # this will still use the discrete
     "color": ("color_discrete_sequence", "color_discrete_map"),
     "pattern_shape": ("pattern_shape_sequence", "pattern_shape_map"),
     "symbol": ("symbol_sequence", "symbol_map"),
@@ -85,7 +84,6 @@ class PartitionManager:
         self.list_var = None
         self.cols = None
         self.pivot_vars = None
-        self.variable_plot_by = False
         self.has_color = None
         self.facet_row = None
         self.facet_col = None
@@ -139,12 +137,15 @@ class PartitionManager:
         args = self.args
         table = args["table"]
 
+        print("converting to long mode")
+
         # if there is no plot by arg, the variable column becomes it
         if not self.args.get("by", None):
-            self.variable_plot_by = True
             args["by"] = self.pivot_vars["variable"]
 
         args["table"] = self.to_long_mode(table, self.cols)
+
+        print("converted")
 
     def is_single_numeric_col(
             self,
@@ -161,7 +162,7 @@ class PartitionManager:
         seq_arg = PARTITION_ARGS[arg][0]
         if "always_attached" in self.groups:
             new_col = get_unique_names(self.args["table"], [arg])[arg]
-            self.always_attached[self.args[arg]] = (map_val, self.args[seq_arg], new_col)
+            self.always_attached[(arg, self.args[arg])] = (map_val, self.args[seq_arg], new_col)
             # a new column will be constructed so this color is always updated
             self.args[f"attached_{arg}"] = new_col
         else:
@@ -306,7 +307,7 @@ class PartitionManager:
         return args["table"]
 
     def build_ternary_chain(self, cols):
-        # todo: fix, this is bad
+        # todo: fix, this is probably bad
         ternary_string = f"{self.pivot_vars['value']} = "
         for i, col in enumerate(cols):
             if i == len(cols) - 1:
@@ -318,6 +319,7 @@ class PartitionManager:
     def to_long_mode(self, table, cols):
         new_tables = []
         for col in cols:
+            print("appending", col)
             new_tables.append(table.update_view(f"{self.pivot_vars['variable']} = `{col}`"))
 
         merged = merge(new_tables)
@@ -368,6 +370,7 @@ class PartitionManager:
         trace_generator = None
         figs = []
         for i, args in enumerate(self.partition_generator()):
+            print(args)
             fig = self.draw_figure(call_args=args, trace_generator=trace_generator)
             if not trace_generator:
                 trace_generator = fig.trace_generator

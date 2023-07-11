@@ -20,13 +20,16 @@ class Preprocesser:
         pass
 
     def prepare_preprocess(self):
+        print("in preprocesser")
         if "preprocess_hist" in self.groups:
             self.preprocesser = HistPreprocesser(self.args)
-        if "preprocess_freq" in self.groups:
+        elif "preprocess_freq" in self.groups:
+            # setting the preprocessor is only needed if there is a
+            # preprocess_partitioned_tables function
+            print("freak time")
             self.preprocesser = FreqPreprocesser(self.args)
-        if "always_attached" in self.groups and self.always_attached:
-            print("ergikernfe")
-            self.preprocesser = AttachedPreprocesser(self.args, self.always_attached)
+        elif "always_attached" in self.groups and self.always_attached:
+            AttachedPreprocesser(self.args, self.always_attached)
 
 
 

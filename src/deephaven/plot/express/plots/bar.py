@@ -16,6 +16,10 @@ def bar(
         table: Table = None,
         x: str | list[str] = None,
         y: str | list[str] = None,
+        by: str | list[str] = None,
+        by_vars: tuple[str] = ("color",),
+        color: str | list[str] = None,
+        pattern_shape: str | list[str] = None,
         error_x: str | list[str] = None,
         error_x_minus: str | list[str] = None,
         error_y: str | list[str] = None,
@@ -24,7 +28,12 @@ def bar(
         hover_name: str | list[str] = None,
         labels: dict[str, str] = None,
         color_discrete_sequence: list[str] = None,
+        color_discrete_map: dict[str, str] = None,
         pattern_shape_sequence: list[str] = None,
+        pattern_shape_map: dict[str, str] = None,
+        color_continuous_scale=None,
+        range_color=None,
+        color_continuous_midpoint=None,
         opacity: float = None,
         barmode: str = 'relative',
         log_x: bool = False,
@@ -126,11 +135,7 @@ def bar(
     """
     args = locals()
 
-    update_wrapper = process_args(args, {"bar"})
-
-    return update_wrapper(
-        generate_figure(draw=px.bar, call_args=args)
-    )
+    return process_args(args, {"bar", "supports_lists"}, px_func=px.bar)
 
 
 def _bar_polar(
@@ -192,6 +197,9 @@ def timeline(
         labels: dict[str, str] = None,
         color_discrete_sequence: list[str] = None,
         pattern_shape_sequence: list[str] = None,
+        color_continuous_scale=None,
+        range_color=None,
+        color_continuous_midpoint=None,
         opacity: float = None,
         range_x: list[int] = None,
         range_y: list[int] = None,
@@ -254,24 +262,28 @@ def timeline(
       A DeephavenFigure that contains the timeline chart
 
     """
-    # TODO: add resource column?
     table, x_diff = preprocess_timeline(table, x_start, x_end, y)
     args = locals()
 
-    update_wrapper = process_args(args, {"marker"})
-
-    return update_wrapper(
-        generate_figure(draw=px.timeline, call_args=args)
-    )
+    return process_args(args, {"marker"})
 
 
 def frequency_bar(
         table: Table = None,
         x: str | list[str] = None,
         y: str | list[str] = None,
+        by: str | list[str] = None,
+        by_vars: tuple[str] = ("color",),
         labels: dict[str, str] = None,
+        color: str | list[str] = None,
+        pattern_shape: str | list[str] = None,
         color_discrete_sequence: list[str] = None,
+        color_discrete_map: dict[str, str] = None,
         pattern_shape_sequence: list[str] = None,
+        pattern_shape_map: dict[str, str] = None,
+        color_continuous_scale=None,
+        range_color=None,
+        color_continuous_midpoint=None,
         opacity: float = None,
         barmode: str = 'relative',
         log_x: bool = False,
@@ -348,12 +360,5 @@ def frequency_bar(
 
     args = locals()
 
-    update_wrapper = process_args(args, {"bar"})
-
-    create_layered = partial(preprocess_and_layer,
-                             preprocess_frequency_bar,
-                             px.bar, args)
-
-    return update_wrapper(
-        create_layered("x") if x else create_layered("y", orientation="h")
-    )
+    return process_args(
+        args, {"bar", "preprocess_freq", "supports_lists"}, px_func=px.bar)
