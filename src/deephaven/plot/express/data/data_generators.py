@@ -54,7 +54,7 @@ def iris(ticking: bool = True, size: int = 150) -> Table:
 
     base_time = parse_instant("1936-01-01T08:00:00 UTC")
     species_list: list[str] = ["setosa", "versicolor", "virginica"]
-    col_id = {"sepal_length": 0, "sepal_width": 1, "petal_length": 2, "petal_width": 3}
+    col_ids = {"sepal_length": 0, "sepal_width": 1, "petal_length": 2, "petal_width": 3}
     # statistical values extracted from the iris data set https://en.wikipedia.org/wiki/Iris_flower_data_set
     # average [setosa, versicolor, virginica] and [sepal_length, sepal_width, petal_length, petal_width]
     avg: list[list[float]] = [
@@ -69,16 +69,14 @@ def iris(ticking: bool = True, size: int = 150) -> Table:
         [0.64, 0.32, 0.55, 0.27],
     ]
 
-    def random_gauss(mu: float, sigma: float) -> float:
-        return random.gauss(mu, sigma)
-
     def generate_value(seed: int, species_id: int, col: str) -> float:
-        if col_id[col] == 0:
+        col_id = col_ids[col]
+        if col_id == 0:
             random.seed(
                 5001 + seed
             )  # set seed once per row + offset that made it look nice
         return round(
-            random_gauss(avg[species_id][col_id[col]], std[species_id][col_id[col]]),
+            random.gauss(avg[species_id][col_id], std[species_id][col_id]),
             1,
         )
 
