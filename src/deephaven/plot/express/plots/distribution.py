@@ -7,9 +7,9 @@ from plotly import express as px
 
 from deephaven.table import Table
 
-from ._private_utils import validate_common_args, preprocess_and_layer, process_args
+from ._private_utils import validate_common_args, preprocess_and_layer, shared_violin, shared_box, \
+    shared_strip, shared_histogram
 from ._update_wrapper import default_callback, unsafe_figure_update_wrapper
-from ._layer import layer
 from ..deephaven_figure import DeephavenFigure
 from ..preprocess import preprocess_ecdf
 
@@ -99,7 +99,7 @@ def violin(
 
     args = locals()
 
-    return process_args(args, {"marker", "preprocess_violin", "supports_lists"}, px_func=px.violin)
+    return shared_violin(**args)
 
 
 def box(
@@ -187,7 +187,7 @@ def box(
 
     args = locals()
 
-    return process_args(args, {"marker", "preprocess_violin", "supports_lists"}, px_func=px.box)
+    return shared_box(**args)
 
 
 def strip(
@@ -267,7 +267,7 @@ def strip(
 
     args = locals()
 
-    return process_args(args, {"marker", "preprocess_violin", "supports_lists"}, px_func=px.strip)
+    return shared_strip(**args)
 
 
 def _ecdf(
@@ -340,7 +340,6 @@ def _ecdf(
     return update_wrapper(
         create_layered("x") if x else create_layered("y", orientation="h")
     )
-
 
 def histogram(
         table: Table = None,
@@ -459,233 +458,6 @@ def histogram(
       DeephavenFigure: A DeephavenFigure that contains the histogram
 
     """
-    bargap = 0
-    hist_val_name = histfunc
-
     args = locals()
-    validate_common_args(args)
 
-    marg_data, marg_style = get_marg_args(args)
-
-
-    """
-    create_layered = partial(
-        preprocess_and_layer,
-        preprocessor, px.bar, args,
-        is_hist=True
-    )
-    """
-    return process_args(
-        args, {"bar", "preprocess_hist", "supports_lists"}, px_func = px.bar
-    )
-
-    var = "x" if x else "y"
-    orientation = "h" if var == "y" else None
-    fig = create_layered(var, orientation=orientation)
-
-    marginals = partial(
-        attach_marginals, marg_data, marg_style,
-        marginal_x=marginal if var == "x" else None,
-        marginal_y=marginal if var == "y" else None,
-    )
-
-    return update_wrapper(
-        attach_marginals(
-            fig,
-            marg_data,
-            marg_style,
-            marginal_x=marginal if var == "x" else None,
-            marginal_y=marginal if var == "y" else None,
-        )
-    )
-
-
-def get_marginal_columns(
-        x: str | list[str],
-        y: str | list[str],
-        var: str
-) -> list[str]:
-    """Get a list of column for creating marginals. If in wide mode and the
-    marginal is on the same dimension on the variable that's a list, return the
-    list. Otherwise, return a list of the column, same length as the list
-
-    Args:
-      x: str | list[str]: The columns on x
-      y: str | list[str]: The columns on y
-      var: str: x if the marginal is along the x-axis, y if along y
-
-    Returns:
-      list[str]: The marginals columns
-
-    """
-    x_is_list = isinstance(x, list)
-    y_is_list = isinstance(y, list)
-
-    if var == "x":
-        if x_is_list:
-            return x
-        else:
-            return [x for _ in range(len(y) if y_is_list else 1)]
-    else:
-        if y_is_list:
-            return y
-        else:
-            return [y for _ in range(len(x) if x_is_list else 1)]
-
-
-def marginal_axis_update(
-        matches: str = None
-) -> dict[str, any]:
-    """Create an update to a marginal axis so it hides much of the axis info
-
-    Args:
-      matches: str:  (Default value = None)
-        An optional axis, such as x, y, x2 to match this axis to
-
-    Returns:
-      dict[str, any]: The update
-
-    """
-    return {
-        "matches": matches,
-        "title": {},
-        'showgrid': False,
-        'showline': False,
-        'showticklabels': False,
-        'ticks': ''
-    }
-
-
-def create_marginal(
-        marginal: str,
-        args: dict[str, any],
-        style: dict[str, any],
-        which: str
-) -> DeephavenFigure:
-    """Create a marginal figure
-
-    Args:
-      marginal: str: The type of marginal; histogram, violin, rug, box
-      args: dict[str, any] The args to pass to the marginal function
-      style: dict[str, any] The style args to pass to the marginal function
-      which: str: x or y depending on which marginal is being drawn
-
-    Returns:
-      DeephavenFigure: The marginal figure
-
-    """
-    if marginal == "histogram":
-        args["barmode"] = "overlay"
-    marginal_map = {
-        "histogram": histogram,
-        "violin": violin,
-        "rug": strip,
-        "box": box
-    }
-
-    fig_marg = marginal_map[marginal](**args, **style)
-    fig_marg.fig.update_traces(showlegend=False)
-
-    if marginal == "rug":
-        symbol = "line-ns-open" if which == "x" else "line-ew-open"
-        fig_marg.fig.update_traces(marker_symbol=symbol, jitter=0)
-
-    return fig_marg
-
-
-def attach_marginals(
-        fig: DeephavenFigure,
-        data: dict[str, any],
-        style: dict[str, any],
-        marginal_x: str = None,
-        marginal_y: str = None
-) -> DeephavenFigure:
-    """Create and attach marginals to the provided figure.
-
-    Args:
-      fig: DeephavenFigure: The figure to attach marginals to
-      data: dict[str, any]: The data args to use
-      style: dict[str, any]: The style args to use
-      marginal_x: str:  (Default value = None)
-        The type of marginal; histogram, violin, rug, box
-      marginal_y: str:  (Default value = None)
-        The type of marginal; histogram, violin, rug, box
-
-    Returns:
-      DeephavenFigure: The figure, with marginals attached if marginal_x/y was
-        specified
-
-    """
-    figs = [fig]
-
-    specs = []
-
-    if marginal_x:
-        cols = get_marginal_columns(data["x"], data["y"], "x")
-        args = {
-            "table": data["table"],
-            "x": cols
-        }
-        figs.append(create_marginal(marginal_x, args, style, "x"))
-        specs = [
-            {'y': [0, 0.74]},
-            {
-                'y': [0.75, 1],
-                "xaxis_update": marginal_axis_update("x"),
-                "yaxis_update": marginal_axis_update(),
-            },
-        ]
-
-    if marginal_y:
-        cols = get_marginal_columns(data["x"], data["y"], "y")
-        args = {
-            "table": data["table"],
-            "y": cols
-        }
-        figs.append(create_marginal(marginal_y, args, style, "y"))
-        if specs:
-            specs[0]["x"] = [0, 0.745]
-            specs[1]["x"] = [0, 0.745]
-            specs.append(
-                {
-                    'x': [0.75, 1], 'y': [0, 0.74],
-                    "yaxis_update": marginal_axis_update("y"),
-                    "xaxis_update": marginal_axis_update(),
-                })
-
-        else:
-            specs = [
-                {'x': [0, 0.745]},
-                {'x': [0.75, 1],
-                 "yaxis_update": marginal_axis_update("y"),
-                 "xaxis_update": marginal_axis_update(),
-                 },
-            ]
-
-    return layer(*figs, specs=specs) if specs else fig
-
-
-def get_marg_args(
-        args: dict[str, any]
-) -> tuple[dict[str, any], dict[str, any]]:
-    """Copy the required args into data and style for marginal creation
-
-    Args:
-      args: dict[str, any]: The args to split
-
-    Returns:
-      tuple[dict[str, any], dict[str, any]]: A tuple of
-        (data args dict, style args dict)
-
-    """
-    data = {
-        "table": args["table"],
-        "x": args["x"],
-        "y": args["y"],
-    }
-
-    style = {
-        "color_discrete_sequence": args["color_discrete_sequence"],
-    }
-
-    return data, style
+    return shared_histogram(**args)

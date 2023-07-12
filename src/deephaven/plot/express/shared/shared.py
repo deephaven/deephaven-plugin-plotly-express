@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Generator
 
-from deephaven.table import Table
+from deephaven.table import Table, PartitionedTable
 
 
 def combined_generator(
@@ -52,6 +52,9 @@ def get_unique_names(
       dict[str, str]: A dictionary that maps orig_names to new names that are not found in the table
 
     """
+    if isinstance(table, PartitionedTable):
+        table = table.constituent_tables[0]
+
     new_names = {}
 
     table_columns = {column.name for column in table.columns}

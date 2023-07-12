@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from deephaven import agg, empty_table, new_table
+from deephaven.table import PartitionedTable
 
 from .UnivariatePreprocesser import UnivariatePreprocesser
 from ..shared import get_unique_names
 from deephaven.column import long_col
 from deephaven.updateby import cum_sum
-import deephaven.pandas as dhpd
 
 # Used to aggregate within histogram bins
 
@@ -45,11 +45,11 @@ def get_aggs(
             ', '.join([f"{base}{column}" for column in columns]))
 
 class HistPreprocesser(UnivariatePreprocesser):
-    def __init__(self, args):
-        super().__init__(args)
+    def __init__(self, args, pivot_vars):
+        super().__init__(args, pivot_vars)
         self.range_table = None
         self.names = None
-        self.nbins = args.pop("nbins")
+        self.nbins = args.pop("nbins", 10)
         self.range_bins = args.pop("range_bins")
         self.histfunc = args.pop("histfunc")
         self.barnorm = args.pop("barnorm")
@@ -57,7 +57,7 @@ class HistPreprocesser(UnivariatePreprocesser):
         self.cumulative = args.pop("cumulative")
         self.prepare_preprocess()
 
-    def prepare_preprocess(self):
+    def prepare_preprocess(self, ):
         self.names = get_unique_names(self.args["table"], ["range_index", "range",
                                          "bin_min", "bin_max",
                                          "valuez", "total"])
@@ -83,6 +83,9 @@ class HistPreprocesser(UnivariatePreprocesser):
           A new table that contains a range object in a Range column
 
         """
+        # partitioned tables need range calculated on all
+        table = self.table.merge() if isinstance(self.table, PartitionedTable) else self.table
+
         if self.range_bins:
             range_min = self.range_bins[0]
             range_max = self.range_bins[1]
@@ -93,7 +96,7 @@ class HistPreprocesser(UnivariatePreprocesser):
             # need to find range across all columns
             min_aggs, min_cols = get_aggs("RangeMin", self.cols)
             max_aggs, max_cols = get_aggs("RangeMax", self.cols)
-            table = self.table.agg_by([agg.min_(min_aggs), agg.max_(max_aggs)]) \
+            table = table.agg_by([agg.min_(min_aggs), agg.max_(max_aggs)]) \
                 .update([f"RangeMin = min({min_cols})", f"RangeMax = max({max_cols})"])
 
         return table.update(
@@ -108,6 +111,7 @@ class HistPreprocesser(UnivariatePreprocesser):
             # the column needs to be temporarily renamed to avoid collisions
             tmp_name = f"tmp{i}"
             tmp_col = get_unique_names(table, [tmp_name])[tmp_name]
+            print(tmp_col, column)
             count_table = table.view(f"{tmp_col} = {column}") \
                 .join(self.range_table) \
                 .update_view(f"{range_index} = {range_}.index({tmp_col})") \

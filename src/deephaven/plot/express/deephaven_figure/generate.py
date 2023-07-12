@@ -794,6 +794,7 @@ def get_hover_body(
     if current_partition:
         for col, val in current_partition.items():
             hover_body.append(f"{col}={val}")
+    print(current_mapping)
     for var, data_col in current_mapping.items():
         # error bars are automatically displayed with the associated variable
         # attached values do not show up

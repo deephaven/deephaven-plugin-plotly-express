@@ -9,22 +9,21 @@ class Preprocesser:
             self,
             args,
             groups,
-            always_attached
+            always_attached,
+            pivot_vars
     ):
         self.args = args
         self.groups = groups
         self.preprocesser = None
         self.always_attached = always_attached
-
+        self.pivot_vars = pivot_vars
         self.prepare_preprocess()
         pass
 
     def prepare_preprocess(self):
         if "preprocess_hist" in self.groups:
-            self.preprocesser = HistPreprocesser(self.args)
+            self.preprocesser = HistPreprocesser(self.args, self.pivot_vars)
         elif "preprocess_freq" in self.groups:
-            # setting the preprocessor is only needed if there is a
-            # preprocess_partitioned_tables function
             self.preprocesser = FreqPreprocesser(self.args)
         elif "always_attached" in self.groups and self.always_attached:
             AttachedPreprocesser(self.args, self.always_attached)

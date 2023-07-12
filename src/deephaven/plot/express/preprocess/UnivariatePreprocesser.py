@@ -11,6 +11,7 @@ class UnivariatePreprocesser:
     def __init__(
             self,
             args,
+            pivot_vars=None
     ):
         self.args = args
         self.table = args["table"]

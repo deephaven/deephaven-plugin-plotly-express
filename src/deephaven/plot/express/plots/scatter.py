@@ -4,7 +4,6 @@ from plotly import express as px
 
 from deephaven.table import Table
 
-from .distribution import attach_marginals, get_marg_args
 from ._private_utils import process_args
 from ._update_wrapper import default_callback
 from ..deephaven_figure import generate_figure, DeephavenFigure
@@ -165,18 +164,7 @@ def scatter(
 
     args = locals()
 
-    marg_data, marg_style = get_marg_args(args)
-
-    return process_args(args, {"scatter", "supports_lists", "both_marginals"}, px_func=px.scatter)
-
-    return update_wrapper(
-        attach_marginals(
-            generate_figure(draw=px.scatter, call_args=args),
-            marg_data,
-            marg_style,
-            marginal_x=marginal_x, marginal_y=marginal_y,
-        )
-    )
+    return process_args(args, {"scatter", "supports_lists"}, px_func=px.scatter)
 
 
 def scatter_3d(

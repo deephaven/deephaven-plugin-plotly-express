@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from functools import partial
-from collections.abc import Generator
+from collections.abc import Generator, Callable
 
 import plotly.express as px
 
@@ -12,6 +13,8 @@ from .PartitionManager import PartitionManager
 from ._update_wrapper import unsafe_figure_update_wrapper
 from ..deephaven_figure import generate_figure, DeephavenFigure
 from ..shared import get_unique_names
+from ._update_wrapper import default_callback
+
 
 PARTITION_ARGS = {
     "plot_by": None,
@@ -331,20 +334,15 @@ def apply_args_groups(
     sync_dict.sync_pop()
 
 
-
-
-
-
-
-
 def process_args(
         args: dict[str, any],
         groups: set[str] = None,
         add: dict[str, any] = None,
         pop: list[str] = None,
         remap: dict[str, str] = None,
-        px_func = callable
+        px_func=Callable
 ) -> DeephavenFigure:
+
     """Process the provided args
 
     Args:
@@ -364,10 +362,16 @@ def process_args(
     """
     validate_common_args(args)
 
-    draw_figure = partial(generate_figure, draw=px_func)
-    partitioned = PartitionManager(args, draw_figure, groups)
+    marg_args = None
+    if any(arg in args for arg in ["marginal" "marginal_x", "marginal_y"]):
+        marg_args = get_marg_args(args)
+        if "marginal" in args:
+            var = "x" if args["x"] else "y"
+            args[f"marginal_{var}"] = args.pop("marginal")
 
-    # todo: do this in partition manager?
+    draw_figure = partial(generate_figure, draw=px_func)
+    partitioned = PartitionManager(args, draw_figure, groups, marg_args, attach_marginals)
+
     apply_args_groups(args, groups)
 
     if add:
@@ -387,6 +391,7 @@ def process_args(
     )
 
     return update_wrapper(partitioned.create_figure())
+
 
 class SyncDict:
     """A dictionary wrapper that will queue up keys to remove and remove them
@@ -431,3 +436,214 @@ class SyncDict:
         """
         for k in self.pop_set:
             self.d.pop(k)
+
+def set_shared_defaults(args):
+    args["by_vars"] = args.get("by_vars", ("color",))
+    args["unsafe_update_figure"] = args.get("unsafe_update_figure", default_callback)
+    args["x"] = args.get("x", None)
+    args["y"] = args.get("y", None)
+
+def shared_violin(
+        **args
+) -> DeephavenFigure:
+    set_shared_defaults(args)
+    args["violinmode"] = args.get("violinmode", "group")
+    args["points"] = args.get("points", "outliers")
+    return process_args(args, {"marker", "preprocess_violin", "supports_lists"}, px_func=px.violin)
+
+
+def shared_box(
+        **args
+) -> DeephavenFigure:
+    set_shared_defaults(args)
+    args["boxmode"] = args.get("boxmode", "group")
+    args["points"] = args.get("points", "outliers")
+    return process_args(args, {"marker", "preprocess_violin", "supports_lists"}, px_func=px.box)
+
+
+def shared_strip(
+        **args
+) -> DeephavenFigure:
+    set_shared_defaults(args)
+    args["stripmode"] = args.get("stripmode", "group")
+    args["points"] = args.get("points", "outliers")
+    return process_args(args, {"marker", "preprocess_violin", "supports_lists"}, px_func=px.strip)
+
+
+def shared_histogram(
+        **args
+) -> DeephavenFigure:
+    set_shared_defaults(args)
+    args["barmode"] = args.get("stripmode", "relative")
+    args["nbins"] = args.get("nbins", 10)
+    args["histfunc"] = args.get("histfunc", "count")
+    args["histnorm"] = args.get("histnorm", None)
+    args["cumulative"] = args.get("cumulative", False)
+    args["range_bins"] = args.get("range_bins", None)
+    args["barnorm"] = args.get("barnorm", None)
+
+    args["bargap"] = 0
+    args["hist_val_name"] = args["histfunc"]
+
+    return process_args(
+        args, {"bar", "preprocess_hist", "supports_lists"}, px_func=px.bar
+    )
+
+def marginal_axis_update(
+        matches: str = None
+) -> dict[str, any]:
+    """Create an update to a marginal axis so it hides much of the axis info
+
+    Args:
+      matches: str:  (Default value = None)
+        An optional axis, such as x, y, x2 to match this axis to
+
+    Returns:
+      dict[str, any]: The update
+
+    """
+    return {
+        "matches": matches,
+        "title": {},
+        'showgrid': False,
+        'showline': False,
+        'showticklabels': False,
+        'ticks': ''
+    }
+
+
+def create_marginal(
+        marginal: str,
+        args: dict[str, any],
+        which: str
+) -> DeephavenFigure:
+    """Create a marginal figure
+
+    Args:
+      marginal: str: The type of marginal; histogram, violin, rug, box
+      args: dict[str, any] The args to pass to the marginal function
+      style: dict[str, any] The style args to pass to the marginal function
+      which: str: x or y depending on which marginal is being drawn
+
+    Returns:
+      DeephavenFigure: The marginal figure
+
+    """
+    if marginal == "histogram":
+        args["barmode"] = "overlay"
+    marginal_map = {
+        "histogram": shared_histogram,
+        "violin": shared_violin,
+        "rug": shared_strip,
+        "box": shared_box
+    }
+
+    fig_marg = marginal_map[marginal](**args)
+    fig_marg.fig.update_traces(showlegend=False)
+
+    if marginal == "rug":
+        symbol = "line-ns-open" if which == "x" else "line-ew-open"
+        fig_marg.fig.update_traces(marker_symbol=symbol, jitter=0)
+
+    return fig_marg
+
+
+def attach_marginals(
+        fig: DeephavenFigure,
+        args: dict[str, any],
+        marginal_x: str = None,
+        marginal_y: str = None
+) -> DeephavenFigure:
+    """Create and attach marginals to the provided figure.
+
+    Args:
+      fig: DeephavenFigure: The figure to attach marginals to
+      args: dict[str, any]: The data args to use
+      marginal_x: str:  (Default value = None)
+        The type of marginal; histogram, violin, rug, box
+      marginal_y: str:  (Default value = None)
+        The type of marginal; histogram, violin, rug, box
+
+    Returns:
+      DeephavenFigure: The figure, with marginals attached if marginal_x/y was
+        specified
+
+    """
+    figs = [fig]
+
+    data = {
+        "x": args.pop("x"),
+        "y": args.pop("y")
+    }
+
+    specs = []
+
+    if marginal_x:
+        args = {
+            **args,
+            "x": data["x"]
+        }
+        print(args)
+        figs.append(create_marginal(marginal_x, args, "x"))
+        specs = [
+            {'y': [0, 0.74]},
+            {
+                'y': [0.75, 1],
+                "xaxis_update": marginal_axis_update("x"),
+                "yaxis_update": marginal_axis_update(),
+            },
+        ]
+
+    if marginal_y:
+        args = {
+            **args,
+            "y": data["y"]
+        }
+        figs.append(create_marginal(marginal_y, args, "y"))
+        if specs:
+            specs[0]["x"] = [0, 0.745]
+            specs[1]["x"] = [0, 0.745]
+            specs.append(
+                {
+                    'x': [0.75, 1], 'y': [0, 0.74],
+                    "yaxis_update": marginal_axis_update("y"),
+                    "xaxis_update": marginal_axis_update(),
+                })
+
+        else:
+            specs = [
+                {'x': [0, 0.745]},
+                {'x': [0.75, 1],
+                 "yaxis_update": marginal_axis_update("y"),
+                 "xaxis_update": marginal_axis_update(),
+                 },
+            ]
+
+    return layer(*figs, specs=specs) if specs else fig
+
+
+def get_marg_args(
+        args: dict[str, any]
+) -> dict[str, any]:
+    """Copy the required args into data and style for marginal creation
+
+    Args:
+      args: dict[str, any]: The args to split
+
+    Returns:
+      tuple[dict[str, any], dict[str, any]]: A tuple of
+        (data args dict, style args dict)
+
+    """
+    marg_args = {
+        "x", "y", "by", "by_vars", "color", "hover_name", "labels",
+        "color_discrete_sequence", "color_discrete_map", "nbins"
+    }
+
+    new_args = {}
+
+    for arg in marg_args:
+        if arg in args:
+            new_args[arg] = args[arg]
+
+    return new_args

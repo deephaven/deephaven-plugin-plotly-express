@@ -9,7 +9,6 @@ from ._layer import layer
 from ..preprocess.Preprocesser import Preprocesser
 from ..shared import get_unique_names
 
-
 PARTITION_ARGS = {
     "by": None,
     "color": ("color_discrete_sequence", "color_discrete_map"),
@@ -40,6 +39,7 @@ STYLE_DEFAULTS = {
     "size": [4, 5, 6, 7, 8, 9],
     "width": [3, 4, 5, 6, 7, 8]
 }
+
 
 def get_partition_key_column_tuples(
         key_column_table, columns
@@ -77,7 +77,9 @@ class PartitionManager:
             self,
             args,
             draw_figure,
-            groups
+            groups,
+            marg_args,
+            marg_func
     ):
 
         self.by_vars = None
@@ -89,12 +91,11 @@ class PartitionManager:
         self.facet_col = None
         self.always_attached = {}
 
-        if not args.get("color_discrete_sequence"):
-            # the colors need to match the plotly qualitative colors so they can be
-            # overriden, but has_color should be false as the color was not
-            # specified by the user
-            self.has_color = False
-            args["color_discrete_sequence"] = px.colors.qualitative.Plotly
+        self.marginal_x = args.pop("marginal_x", None)
+        self.marginal_y = args.pop("marginal_y", None)
+        self.marg_args = marg_args
+        self.attach_marginals = marg_func
+        self.marg_color = None
 
         self.args = args
         self.groups = groups
@@ -106,13 +107,17 @@ class PartitionManager:
         self.partitioned_table = self.process_partitions()
         self.draw_figure = draw_figure
 
-
     def set_pivot_variables(self):
         if "supports_lists" not in self.groups:
             return
 
         args = self.args
         table, x, y = args["table"], args["x"], args["y"]
+
+        if isinstance(table, PartitionedTable):
+            # if given a partitioned table, pivoting is not supported
+            return
+
         if isinstance(x, list):
             var, cols = "x", x
         elif isinstance(y, list):
@@ -130,12 +135,15 @@ class PartitionManager:
         self.pivot_vars = get_unique_names(table, ["variable", "value"])
         self.args["pivot_vars"] = self.pivot_vars
 
-
     def convert_table_to_long_mode(
             self,
     ):
         args = self.args
         table = args["table"]
+
+        if isinstance(table, PartitionedTable):
+            # partitioned tables are assumed to already be properly formatted
+            return
 
         # if there is no plot by arg, the variable column becomes it
         if not self.args.get("by", None):
@@ -189,6 +197,7 @@ class PartitionManager:
         plot_by_cols = args.get("by", None)
 
         if arg == "color":
+
             map_name = "color_discrete_map"
             map_ = args[map_name]
             if map_ == "by" or isinstance(map_, dict):
@@ -209,6 +218,9 @@ class PartitionManager:
                 if not self.args["color_discrete_sequence"]:
                     self.args["color_discrete_sequence"] = STYLE_DEFAULTS[arg]
                 args["color_by"] = plot_by_cols
+
+            # save whatever column is being used for colors for marginals
+            self.marg_color = args.get("color_by", None)
 
         elif arg == "size":
             map_ = args["size_map"]
@@ -273,7 +285,7 @@ class PartitionManager:
                     self.facet_col = val
 
         # preprocessor needs to be initialized after the always attached arguments are found
-        self.preprocessor = Preprocesser(args, self.groups, self.always_attached)
+        self.preprocessor = Preprocesser(args, self.groups, self.always_attached, self.pivot_vars)
 
         if partition_cols:
             if not partitioned_table:
@@ -341,8 +353,6 @@ class PartitionManager:
         for table, current_partition in zip(tables, self.current_partition_generator()):
             yield table, current_partition
 
-
-
     def partition_generator(self):
         args, partitioned_table = self.args, self.partitioned_table
         if hasattr(partitioned_table, "constituent_tables"):
@@ -390,7 +400,6 @@ class PartitionManager:
                 facet_key.extend([partition.get(self.facet_col, None), partition.get(self.facet_row, None)])
             facet_key = tuple(facet_key)
 
-
             figs.append(fig)
 
         new_fig = layer(*figs)
@@ -403,4 +412,22 @@ class PartitionManager:
 
         if self.has_color is False:
             new_fig.has_color = False
-        return layer(*figs)
+
+        layered_fig = layer(*figs)
+
+        if self.marg_args:
+            # the marginals need to use the already partitioned table as they
+            # will have the same partitions although they will only be styled
+            # by color (colors might be used multiple times)
+            self.marg_args["table"] = self.partitioned_table
+
+            if self.pivot_vars and self.pivot_vars["value"]:
+                self.marg_args[self.list_var] = self.pivot_vars["value"]
+
+            self.marg_args["color"] = self.marg_color
+
+            return self.attach_marginals(
+                layer(*figs), self.marg_args, self.marginal_x, self.marginal_y
+            )
+
+        return layered_fig
