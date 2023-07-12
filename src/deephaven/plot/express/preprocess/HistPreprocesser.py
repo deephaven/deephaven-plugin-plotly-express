@@ -111,7 +111,6 @@ class HistPreprocesser(UnivariatePreprocesser):
             # the column needs to be temporarily renamed to avoid collisions
             tmp_name = f"tmp{i}"
             tmp_col = get_unique_names(table, [tmp_name])[tmp_name]
-            print(tmp_col, column)
             count_table = table.view(f"{tmp_col} = {column}") \
                 .join(self.range_table) \
                 .update_view(f"{range_index} = {range_}.index({tmp_col})") \

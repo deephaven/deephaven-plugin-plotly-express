@@ -466,7 +466,6 @@ def shared_strip(
 ) -> DeephavenFigure:
     set_shared_defaults(args)
     args["stripmode"] = args.get("stripmode", "group")
-    args["points"] = args.get("points", "outliers")
     return process_args(args, {"marker", "preprocess_violin", "supports_lists"}, px_func=px.strip)
 
 
@@ -579,12 +578,11 @@ def attach_marginals(
     specs = []
 
     if marginal_x:
-        args = {
+        x_args = {
             **args,
             "x": data["x"]
         }
-        print(args)
-        figs.append(create_marginal(marginal_x, args, "x"))
+        figs.append(create_marginal(marginal_x, x_args, "x"))
         specs = [
             {'y': [0, 0.74]},
             {
@@ -595,11 +593,11 @@ def attach_marginals(
         ]
 
     if marginal_y:
-        args = {
+        y_args = {
             **args,
             "y": data["y"]
         }
-        figs.append(create_marginal(marginal_y, args, "y"))
+        figs.append(create_marginal(marginal_y, y_args, "y"))
         if specs:
             specs[0]["x"] = [0, 0.745]
             specs[1]["x"] = [0, 0.745]

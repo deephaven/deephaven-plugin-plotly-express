@@ -16,9 +16,7 @@ class AttachedPreprocesser():
         table = self.args["table"]
         for (arg, col), (map, ls, new_col) in self.always_attached.items():
             manager_col = get_unique_names(table, [f"{new_col}_manager"])[f"{new_col}_manager"]
-            print(self.args)
             style_manager = StyleManager(map=map, ls=ls)
-            print(table.columns)
 
             table = table.update_view([
                 f"{manager_col}=style_manager",
