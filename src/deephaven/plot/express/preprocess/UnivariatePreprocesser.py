@@ -18,5 +18,5 @@ class UnivariatePreprocesser:
         self.var = "x" if args["x"] else "y"
         self.other_var = "y" if self.var == "x" else "x"
         self.args["orientation"] = "h" if self.var == "y" else "v"
-        self.col_val = args[self.var]
+        self.col_val = pivot_vars["value"] if pivot_vars else args[self.var]
         self.cols = self.col_val if isinstance(self.col_val, list) else [self.col_val]

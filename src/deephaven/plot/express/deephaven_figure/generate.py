@@ -798,7 +798,8 @@ def get_hover_body(
     for var, data_col in current_mapping.items():
         # error bars are automatically displayed with the associated variable
         # attached values do not show up
-        if var.startswith("error"):
+        # attached style args should not show up
+        if var.startswith("error") or "color" in var or "pattern" in var:
             continue
         # "plural" vars ending with s need the s removed in the hover mapping
         var = var[:-1] if var.endswith("s") else var
@@ -1026,6 +1027,7 @@ def create_hover_and_axis_titles(
 
     labels = custom_call_args.get("labels", None)
     hist_val_name = custom_call_args.get("hist_val_name", None)
+    print(hist_val_name)
 
     current_partition = custom_call_args.get("current_partition", None)
 

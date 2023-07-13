@@ -60,7 +60,7 @@ class HistPreprocesser(UnivariatePreprocesser):
     def prepare_preprocess(self, ):
         self.names = get_unique_names(self.args["table"], ["range_index", "range",
                                          "bin_min", "bin_max",
-                                         "valuez", "total"])
+                                         self.histfunc, "total"])
         self.range_table = self.create_range_table()
 
     def create_range_table(self):
@@ -122,6 +122,7 @@ class HistPreprocesser(UnivariatePreprocesser):
 
     def preprocess_partitioned_tables(self, tables, column=None):
         # column will only be set if there's a pivot var, which means the table has been restructured
+        print(column)
         column = self.col_val if not column else column
 
         range_index, range_, bin_min, bin_max, total = self.names["range_index"], \
@@ -141,8 +142,7 @@ class HistPreprocesser(UnivariatePreprocesser):
             )
             count_cols.append(count_col)
 
-        # this name also ends up on the chart if there is a list of cols
-        var_axis_name = self.names["valuez"]
+        var_axis_name = self.names[self.histfunc]
 
         bin_counts = bin_counts.join(self.range_table) \
             .update_view([f"{bin_min} = {range_}.binMin({range_index})",
