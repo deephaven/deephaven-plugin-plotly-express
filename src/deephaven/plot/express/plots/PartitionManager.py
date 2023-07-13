@@ -375,6 +375,7 @@ class PartitionManager:
             args["table"] = table
             args.update(arg_update)
             yield args
+
         else:
             yield args
 
@@ -400,20 +401,18 @@ class PartitionManager:
                 facet_key.extend([partition.get(self.facet_col, None), partition.get(self.facet_row, None)])
             facet_key = tuple(facet_key)
 
+            if "preprocess_hist" in self.groups or "preprocess_violin" in self.groups:
+                if "current_partition" in args:
+                    fig.fig.update_layout(legend_tracegroupgap=0)
+                else:
+                    fig.fig.update_layout(showlegend=False)
+
             figs.append(fig)
 
-        new_fig = layer(*figs)
-
-        if "preprocess_hist" in self.groups or "preprocess_violin" in self.groups:
-            if self.list_var:
-                new_fig.fig.update_layout(legend_tracegroupgap=0)
-            else:
-                new_fig.fig.update_layout(showlegend=False)
+        layered_fig = layer(*figs, which_layout=0)
 
         if self.has_color is False:
-            new_fig.has_color = False
-
-        layered_fig = layer(*figs)
+            layered_fig.has_color = False
 
         if self.marg_args:
             # the marginals need to use the already partitioned table as they
@@ -427,7 +426,7 @@ class PartitionManager:
             self.marg_args["color"] = self.marg_color
 
             return self.attach_marginals(
-                layer(*figs), self.marg_args, self.marginal_x, self.marginal_y
+                layered_fig, self.marg_args, self.marginal_x, self.marginal_y
             )
 
         return layered_fig

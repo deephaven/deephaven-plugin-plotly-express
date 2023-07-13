@@ -884,10 +884,10 @@ def compute_labels(
 
     """
 
-    """calculate_hist_labels(
+    calculate_hist_labels(
         hist_val_name,
         hover_mapping[0]
-    )"""
+    )
 
     relabel_columns(
         labels,
@@ -904,31 +904,20 @@ def calculate_hist_labels(
     """Calculate the histogram labels
 
     Args:
-      current_var: str: The current list variable
       hist_val_name: str: The histogram name for the value axis, generally
         histfunc
-      current_col: str: The current column
       current_mapping: dict[str, str]: The mapping of variables to columns
 
     """
     if hist_val_name:
-        other_var = "y" if current_var == "x" else "x"
+        # swap the names
+        current_mapping["x"], current_mapping["y"] = current_mapping["y"], current_mapping["x"]
 
-        if not current_col:
-            # if there's no list, the single variable is shown on the axis
-            # rather than "value"
-            current_mapping[current_var] = current_mapping[other_var]
-
-        # no matter what the hist val names should be the other axis name
-        current_mapping[other_var] = hist_val_name
 
 
 def add_axis_titles(
         custom_call_args: dict[str, any],
-        current_var: str,
         hover_mapping: list[dict[str, str]],
-        pivot_vars: dict[str, str],
-        is_list: bool,
         hist_val_name: str
 ) -> None:
     """Add axis titles. Generally, this only applies when there is a list variable
@@ -953,16 +942,10 @@ def add_axis_titles(
     new_yaxis_titles = None
 
     if hist_val_name:
+        print("adding")
         # hist names are already set up in the mapping
         new_xaxis_titles = [hover_mapping[0].get("x", None)]
         new_yaxis_titles = [hover_mapping[0].get("y", None)]
-    elif is_list:
-        if current_var == "x":
-            new_xaxis_titles = [pivot_vars["value"]]
-            new_yaxis_titles = [hover_mapping[0].get("y", None)]
-        elif current_var == "y":
-            new_yaxis_titles = [pivot_vars["value"]]
-            new_xaxis_titles = [hover_mapping[0].get("x", None)]
 
     # a specified axis title update should override this
     if new_xaxis_titles:
@@ -976,6 +959,8 @@ def add_axis_titles(
             "yaxis_titles",
             new_yaxis_titles
         )
+
+    print(custom_call_args)
 
 
 def create_hover_and_axis_titles(
@@ -1044,12 +1029,12 @@ def create_hover_and_axis_titles(
         types, current_partition
     )
 
-    """add_axis_titles(
-        custom_call_args, current_var,
-        hover_mapping, pivot_vars,
-        bool(list_var_cols or current_col),
+    add_axis_titles(
+        custom_call_args,
+        hover_mapping,
         hist_val_name
-    )"""
+    )
+
 
     return hover_text
 

@@ -473,7 +473,7 @@ def shared_histogram(
         **args
 ) -> DeephavenFigure:
     set_shared_defaults(args)
-    args["barmode"] = args.get("stripmode", "relative")
+    args["barmode"] = args.get("barmode", "relative")
     args["nbins"] = args.get("nbins", 10)
     args["histfunc"] = args.get("histfunc", "count")
     args["histnorm"] = args.get("histnorm", None)
@@ -530,6 +530,7 @@ def create_marginal(
     """
     if marginal == "histogram":
         args["barmode"] = "overlay"
+        print("setting to overlay")
     marginal_map = {
         "histogram": shared_histogram,
         "violin": shared_violin,
