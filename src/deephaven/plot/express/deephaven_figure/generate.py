@@ -794,7 +794,6 @@ def get_hover_body(
     if current_partition:
         for col, val in current_partition.items():
             hover_body.append(f"{col}={val}")
-    print(current_mapping)
     for var, data_col in current_mapping.items():
         # error bars are automatically displayed with the associated variable
         # attached values do not show up
@@ -1027,7 +1026,6 @@ def create_hover_and_axis_titles(
 
     labels = custom_call_args.get("labels", None)
     hist_val_name = custom_call_args.get("hist_val_name", None)
-    print(hist_val_name)
 
     current_partition = custom_call_args.get("current_partition", None)
 
