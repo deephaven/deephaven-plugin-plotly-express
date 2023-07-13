@@ -55,7 +55,6 @@ AXIS_SEQUENCE_ARGS = {
     "yaxis_sequence"
 }
 
-
 # these need to be applied to all in wide mode
 SEQUENCE_ARGS_MAP = {
     "symbol_sequence": "marker_symbol",
@@ -755,16 +754,15 @@ def relabel_columns(
       str: The current column renamed
     """
     if labels:
+        print(current_partition)
         for current_mapping in hover_mapping:
             for var, col in current_mapping.items():
                 if "gantt" in types:
                     current_mapping.pop("x")
                 current_mapping[var] = labels.get(col, col)
 
-        for i, (col, var) in enumerate(current_partition):
-            new_col, new_var = labels.get(col), labels.get(var)
-            current_partition[i] = (new_col, new_var)
-
+        for i, (col, _) in enumerate(current_partition.items()):
+            current_partition[col] = labels.get(col, col)
 
 
 def get_hover_body(
@@ -914,7 +912,6 @@ def calculate_hist_labels(
         current_mapping["x"], current_mapping["y"] = current_mapping["y"], current_mapping["x"]
 
 
-
 def add_axis_titles(
         custom_call_args: dict[str, any],
         hover_mapping: list[dict[str, str]],
@@ -964,7 +961,6 @@ def add_axis_titles(
 
 
 def create_hover_and_axis_titles(
-        table: Table,
         custom_call_args: dict[str, any],
         data_cols: dict[str, str],
         hover_mapping: list[dict[str, str]]
@@ -1002,20 +998,10 @@ def create_hover_and_axis_titles(
     """
     types = get_list_var_info(data_cols)
 
-    #current_col = custom_call_args.get("current_col", None)
-
-    # only one of current_var and list_var should be specified and they have
-    # the same function
-    #current_var = custom_call_args.get("current_var", None)
-    #pivot_vars = custom_call_args.get("pivot_vars", {})
-
     labels = custom_call_args.get("labels", None)
     hist_val_name = custom_call_args.get("hist_val_name", None)
 
     current_partition = custom_call_args.get("current_partition", None)
-
-    #if (current_col or list_var_cols) and not pivot_vars:
-    #    pivot_vars = get_unique_names(table, ["variable", "value"])
 
     compute_labels(
         hover_mapping,
@@ -1034,7 +1020,6 @@ def create_hover_and_axis_titles(
         hover_mapping,
         hist_val_name
     )
-
 
     return hover_text
 
@@ -1084,7 +1069,6 @@ def generate_figure(
     )
 
     hover_text = create_hover_and_axis_titles(
-        table,
         custom_call_args,
         data_cols,
         hover_mapping
