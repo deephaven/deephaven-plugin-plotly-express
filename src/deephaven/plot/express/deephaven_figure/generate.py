@@ -761,8 +761,9 @@ def relabel_columns(
                     current_mapping.pop("x")
                 current_mapping[var] = labels.get(col, col)
 
-        for i, (col, _) in enumerate(current_partition.items()):
-            current_partition[col] = labels.get(col, col)
+        for i, (col, _) in enumerate(list(current_partition.items())):
+            new_col = labels.get(col, col)
+            current_partition[new_col] = current_partition.pop(col)
 
 
 def get_hover_body(
