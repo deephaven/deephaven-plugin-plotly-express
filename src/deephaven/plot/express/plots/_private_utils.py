@@ -16,15 +16,6 @@ from ..shared import get_unique_names
 from ._update_wrapper import default_callback
 
 
-PARTITION_ARGS = {
-    "plot_by": None,
-    "line_group": None,  # this will still use the discrete
-    "color": ("color_discrete_sequence", "color_discrete_map"),
-    "pattern_shape": ("pattern_shape_sequence", "pattern_shape_map"),
-    "symbol": ("symbol_sequence", "symbol_map")
-}
-
-
 def validate_common_args(
         args: dict
 ) -> None:

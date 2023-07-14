@@ -224,7 +224,7 @@ def funnel(
         hover_name: str | list[str] = None,
         labels: dict[str, str] = None,
         by: str | list[str] = None,
-        by_vars: tuple[str] = ("color",),
+        by_vars: str | list[str] = "color",
         color: str | list[str] = None,
         color_discrete_sequence: list[str] = None,
         color_discrete_map: dict[str, str] = None,

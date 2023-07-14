@@ -204,7 +204,7 @@ class PartitionManager:
             elif map_ == "identity":
                 args.pop(map_name)
                 args["attached_color"] = args.pop("color")
-            elif val and self.is_single_numeric_col(val, numeric_cols):
+            elif val and self.is_single_numeric_col(val, numeric_cols) and "color_continuous_scale" in self.args:
                 if "always_attached" in self.groups:
                     args["colors"] = args.pop("color")
                 # just keep the argument in place so it can be passed to plotly
@@ -263,7 +263,9 @@ class PartitionManager:
         partition_cols = set()
         partition_map = {}
 
-        self.by_vars = set(args.get("by_vars", ()))
+        by_vars = args.get("by_vars", "")
+        self.by_vars = set([by_vars] if isinstance(by_vars, str) else by_vars)
+        print(self.by_vars)
         args.pop("by_vars", None)
 
         if isinstance(args["table"], PartitionedTable):
