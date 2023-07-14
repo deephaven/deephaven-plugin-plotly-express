@@ -354,7 +354,7 @@ def process_args(
     validate_common_args(args)
 
     marg_args = None
-    if any(arg in args for arg in ["marginal" "marginal_x", "marginal_y"]):
+    if any(arg in args for arg in ["marginal", "marginal_x", "marginal_y"]):
         marg_args = get_marg_args(args)
         if "marginal" in args:
             var = "x" if args["x"] else "y"
@@ -626,7 +626,7 @@ def get_marg_args(
     """
     marg_args = {
         "x", "y", "by", "by_vars", "color", "hover_name", "labels",
-        "color_discrete_sequence", "color_discrete_map", "nbins"
+        "color_discrete_sequence", "color_discrete_map",
     }
 
     new_args = {}

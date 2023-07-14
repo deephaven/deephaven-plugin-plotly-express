@@ -102,8 +102,7 @@ class PartitionManager:
         self.groups = groups
         self.preprocessor = None
         self.set_pivot_variables()
-        if "supports_lists" in self.groups:
-            self.convert_table_to_long_mode()
+        self.convert_table_to_long_mode()
         self.partitioned_table = self.process_partitions()
         self.draw_figure = draw_figure
 
@@ -138,12 +137,16 @@ class PartitionManager:
     def convert_table_to_long_mode(
             self,
     ):
+        if "supports_lists" not in self.groups:
+            return
+
         args = self.args
         table = args["table"]
 
         if isinstance(table, PartitionedTable):
             # partitioned tables are assumed to already be properly formatted
             return
+
 
         # if there is no plot by arg, the variable column becomes it
         if not self.args.get("by", None):
@@ -164,6 +167,9 @@ class PartitionManager:
             map_val=None
     ):
         seq_arg = PARTITION_ARGS[arg][0]
+        if not self.args[seq_arg]:
+            self.args[seq_arg] = STYLE_DEFAULTS[arg]
+
         if "always_attached" in self.groups:
             new_col = get_unique_names(self.args["table"], [arg])[arg]
             self.always_attached[(arg, self.args[arg])] = (map_val, self.args[seq_arg], new_col)
@@ -171,9 +177,6 @@ class PartitionManager:
             self.args[f"attached_{arg}"] = new_col
             self.args.pop(arg)
         else:
-            if not self.args[seq_arg]:
-                self.args[seq_arg] = STYLE_DEFAULTS[arg]
-
             map_arg = PARTITION_ARGS[arg][1]
             map_val = self.args[map_arg]
             if map_val == "by":
@@ -263,9 +266,9 @@ class PartitionManager:
         partition_cols = set()
         partition_map = {}
 
-        by_vars = args.get("by_vars", "")
-        self.by_vars = set([by_vars] if isinstance(by_vars, str) else by_vars)
-        print(self.by_vars)
+        by_vars = args.get("by_vars", None)
+        if by_vars:
+            self.by_vars = set([by_vars] if isinstance(by_vars, str) else by_vars)
         args.pop("by_vars", None)
 
         if isinstance(args["table"], PartitionedTable):
@@ -319,7 +322,6 @@ class PartitionManager:
         return args["table"]
 
     def build_ternary_chain(self, cols):
-        # todo: fix, this is probably bad
         ternary_string = f"{self.pivot_vars['value']} = "
         for i, col in enumerate(cols):
             if i == len(cols) - 1:
