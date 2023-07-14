@@ -22,7 +22,7 @@ TYPE_NULL_MAPPING = {
     "long": "NULL_LONG",
     "float": "NULL_FLOAT",
     "double": "NULL_DOUBLE",
-    "io.deephaven.time.DateTime": "`2000-01-01`"
+    "java.time.Instant": "`2000-01-01`"
 }
 
 # these are data args that can always be safely converted to lists, mostly for
@@ -754,7 +754,6 @@ def relabel_columns(
       str: The current column renamed
     """
     if labels:
-        print(current_partition)
         for current_mapping in hover_mapping:
             for var, col in current_mapping.items():
                 if "gantt" in types:
@@ -940,7 +939,6 @@ def add_axis_titles(
     new_yaxis_titles = None
 
     if hist_val_name:
-        print("adding")
         # hist names are already set up in the mapping
         new_xaxis_titles = [hover_mapping[0].get("x", None)]
         new_yaxis_titles = [hover_mapping[0].get("y", None)]
@@ -957,8 +955,6 @@ def add_axis_titles(
             "yaxis_titles",
             new_yaxis_titles
         )
-
-    print(custom_call_args)
 
 
 def create_hover_and_axis_titles(

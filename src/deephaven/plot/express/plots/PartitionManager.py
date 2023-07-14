@@ -31,6 +31,7 @@ NUMERIC_TYPES = {
     "double",
 }
 
+# color, symbol, line_dash and pattern_shape are plotly defaults
 STYLE_DEFAULTS = {
     "color": px.colors.qualitative.Plotly,
     "symbol": ["circle", "diamond", "square", "x", "cross"],
@@ -102,7 +103,6 @@ class PartitionManager:
         self.preprocessor = None
         self.set_pivot_variables()
         if "supports_lists" in self.groups:
-            # or here
             self.convert_table_to_long_mode()
         self.partitioned_table = self.process_partitions()
         self.draw_figure = draw_figure
@@ -197,7 +197,6 @@ class PartitionManager:
         plot_by_cols = args.get("by", None)
 
         if arg == "color":
-
             map_name = "color_discrete_map"
             map_ = args[map_name]
             if map_ == "by" or isinstance(map_, dict):
@@ -233,12 +232,13 @@ class PartitionManager:
             elif val:
                 self.is_by(arg)
             elif plot_by_cols and (args.get("size_sequence") or "size" in self.by_vars):
-                # for arguments other than color, plot_by does not kick in unless a sequence is specified
+                if not self.args["size_sequence"]:
+                    self.args["size_sequence"] = STYLE_DEFAULTS[arg]
                 args["size_by"] = plot_by_cols
 
         elif arg in {"pattern_shape", "symbol", "line_dash", "width"}:
-            map_name = PARTITION_ARGS[arg][1]
-            map_ = args[map_name]
+            seq_name, map_name = PARTITION_ARGS[arg][0], PARTITION_ARGS[arg][1]
+            seq, map_ = args[seq_name], args[map_name]
             if map_ == "by" or isinstance(map_, dict):
                 self.is_by(arg, args[map_name])
             elif map_ == "identity":
@@ -246,8 +246,9 @@ class PartitionManager:
                 args[f"attached_{arg}"] = args.pop(arg)
             elif val:
                 self.is_by(arg, args[map_name])
-            elif plot_by_cols and (args.get(f"{arg}_sequence") or arg in self.by_vars):
-                # for arguments other than color, plot_by does not kick in unless a sequence is specified
+            elif plot_by_cols and (args.get(seq_name) or arg in self.by_vars):
+                if not seq:
+                    self.args[seq_name] = STYLE_DEFAULTS[arg]
                 args[f"{arg}_by"] = plot_by_cols
 
         return f"{arg}_by", args.get(f"{arg}_by", None)
@@ -369,13 +370,12 @@ class PartitionManager:
 
                 args["table"] = table
                 yield args
-        elif "preprocess_hist" in self.groups or "preprocess_freq" in self.groups:
+        elif "preprocess_hist" in self.groups or "preprocess_freq" in self.groups or "preprocess_time" in self.groups:
             # still need to preprocess the base table
             table, arg_update = list(self.preprocessor.preprocess_partitioned_tables([args["table"]]))[0]
             args["table"] = table
             args.update(arg_update)
             yield args
-
         else:
             yield args
 

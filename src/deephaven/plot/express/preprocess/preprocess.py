@@ -1,65 +1,7 @@
 from __future__ import annotations
 
-from deephaven.table import Table
 from deephaven import agg
-#from deephaven.time import nanos_to_millis, diff_nanos
 from deephaven.updateby import cum_sum
-
-from ..shared import get_unique_names
-
-
-def time_length(
-        start: str,
-        end: str
-) -> int:
-    """Calculate the difference between the start and end times in milliseconds
-
-    Args:
-      start: str:
-        The start time
-      end: str:
-        The end time
-
-    Returns:
-      int: The time in milliseconds
-
-    """
-    return nanos_to_millis(diff_nanos(start, end))
-
-
-def preprocess_timeline(
-        table: Table,
-        x_start: str,
-        x_end: str,
-        y: str
-) -> tuple[Table, str]:
-    """Preprocess timeline params into an appropriate table
-    The table should contain the Time_Diff, which is milliseconds between the
-    provided x_start and x_end
-
-    Args:
-      table: Table:
-        The table to pull data from
-      x_start: str:
-        The column that contains start dates
-      x_end: str:
-        The column that contains end dates
-      y: str:
-        The label for the row
-
-    Returns:
-      tuple[Table, str]: A tuple containing
-        (the new table, the name of the new time_diff column)
-
-    """
-
-    names = get_unique_names(table, ["Time_Diff"])
-
-    new_table = table.view([f"{x_start}",
-                            f"{x_end}",
-                            f"{names['Time_Diff']} = time_length({x_start}, {x_end})",
-                            f"{y}"])
-    return new_table, names['Time_Diff']
 
 
 def preprocess_ecdf(

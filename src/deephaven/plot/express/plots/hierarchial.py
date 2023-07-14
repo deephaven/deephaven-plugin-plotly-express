@@ -223,6 +223,8 @@ def funnel(
         text: str | list[str] = None,
         hover_name: str | list[str] = None,
         labels: dict[str, str] = None,
+        by: str | list[str] = None,
+        by_vars: tuple[str] = ("color",),
         color: str | list[str] = None,
         color_discrete_sequence: list[str] = None,
         color_discrete_map: dict[str, str] = None,
@@ -305,7 +307,6 @@ def funnel_area(
         title: str = None,
         template: str = None,
         opacity: float = None,
-        aggregate: bool = True,
         unsafe_update_figure: callable = default_callback
 ):
     """Returns a funnel area chart

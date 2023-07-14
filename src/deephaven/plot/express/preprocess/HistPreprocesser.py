@@ -122,7 +122,6 @@ class HistPreprocesser(UnivariatePreprocesser):
 
     def preprocess_partitioned_tables(self, tables, column=None):
         # column will only be set if there's a pivot var, which means the table has been restructured
-        print(column)
         column = self.col_val if not column else column
 
         range_index, range_, bin_min, bin_max, total = self.names["range_index"], \

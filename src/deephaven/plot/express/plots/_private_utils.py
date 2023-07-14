@@ -530,7 +530,6 @@ def create_marginal(
     """
     if marginal == "histogram":
         args["barmode"] = "overlay"
-        print("setting to overlay")
     marginal_map = {
         "histogram": shared_histogram,
         "violin": shared_violin,

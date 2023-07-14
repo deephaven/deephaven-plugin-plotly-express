@@ -9,7 +9,6 @@ from deephaven.table import Table
 from ._private_utils import validate_common_args, preprocess_and_layer, process_args
 from ._update_wrapper import default_callback
 from ..deephaven_figure import generate_figure, DeephavenFigure
-from ..preprocess import preprocess_timeline
 
 
 def bar(
@@ -192,11 +191,17 @@ def timeline(
         x_start: str = None,
         x_end: str = None,
         y: str = None,
+        by: str | list[str] = None,
+        by_vars: tuple[str] = ("color",),
+        color: str = None,
+        pattern_shape: str = None,
         text: str = None,
         hover_name: str = None,
         labels: dict[str, str] = None,
         color_discrete_sequence: list[str] = None,
+        color_discrete_map: dict[str, str] = None,
         pattern_shape_sequence: list[str] = None,
+        pattern_shape_map: dict[str, str] = None,
         color_continuous_scale=None,
         range_color=None,
         color_continuous_midpoint=None,
@@ -262,10 +267,9 @@ def timeline(
       A DeephavenFigure that contains the timeline chart
 
     """
-    table, x_diff = preprocess_timeline(table, x_start, x_end, y)
     args = locals()
 
-    return process_args(args, {"marker"})
+    return process_args(args, {"bar", "preprocess_time"}, px_func=px.timeline)
 
 
 def frequency_bar(
