@@ -38,7 +38,7 @@ STYLE_DEFAULTS = {
     "line_dash": ["solid", "dot", "dash", "longdash", "dashdot", "longdashdot"],
     "pattern_shape": ["", "/", "\\", "x", "+", "."],
     "size": [4, 5, 6, 7, 8, 9],
-    "width": [3, 4, 5, 6, 7, 8]
+    "width": [4, 5, 6, 7, 8, 9],
 }
 
 

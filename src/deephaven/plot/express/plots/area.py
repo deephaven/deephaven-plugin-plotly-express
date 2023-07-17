@@ -15,7 +15,6 @@ def area(
         y: str | list[str] = None,
         by: str | list[str] = None,
         by_vars: str | list[str] = "color",
-        line_group: str | list[str] = None,
         color: str | list[str] = None,
         pattern_shape: str | list[str] = None,
         symbol: str | list[str] = None,
