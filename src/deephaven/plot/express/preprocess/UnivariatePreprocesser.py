@@ -1,17 +1,29 @@
 from __future__ import annotations
 
-from deephaven import agg, empty_table, new_table
-from ..shared import get_unique_names
-from deephaven.column import long_col
-from deephaven.updateby import cum_sum
-import deephaven.pandas as dhpd
+from typing import Any
 
-# Used to aggregate within histogram bins
+
 class UnivariatePreprocesser:
+    """
+    A univariate preprocessor that stores useful args. Should be inherited from.
+
+    Args:
+        args: dict[str, str]: Figure creation args
+        pivot_vars: dict[str, str]: Pivot vars that have the new column names
+
+    Attributes:
+        args: dict[str, str]: Figure creation args
+        table: Table: The table to use
+        var: str: The main var. The list of vars was passed to this arg.
+        other_var: The other var.
+        col_val: str: The value column, which is the value in pivot_var if
+          there is a list, otherwise the arg passed to var
+        cols: list[str]: The columns that are being used
+    """
     def __init__(
             self,
-            args,
-            pivot_vars=None
+            args: dict[str, Any],
+            pivot_vars: dict[str, str] = None
     ):
         self.args = args
         self.table = args["table"]

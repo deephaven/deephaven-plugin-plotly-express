@@ -211,17 +211,17 @@ def resize_axis(
 
 
 def get_axis_update(
-        spec: dict[str, any],
+        spec: dict[str, Any],
         type_: str
-) -> dict[str, any] | None:
+) -> dict[str, Any] | None:
     """Retrieve an axis update from the spec
 
     Args:
-      spec: dict[str, any]: The full spec object
+      spec: dict[str, Any]: The full spec object
       type_: str: The type of axis to retrieve the update of
 
     Returns:
-      dict[str, any] | None: A dictionary of updates to make to the x or y-axis
+      dict[str, Any] | None: A dictionary of updates to make to the x or y-axis
 
     """
     if 'xaxis_update' in spec and type_ == "xaxis":
@@ -435,7 +435,7 @@ def fig_data_and_layout(
 def layer(
         *figs: DeephavenFigure | Figure,
         which_layout: int = None,
-        specs: list[dict[str, any]] = None,
+        specs: list[dict[str, Any]] = None,
         unsafe_update_figure: callable = default_callback
 ) -> DeephavenFigure:
     """Layers the provided figures. Be default, the layouts are sequentially

@@ -3,6 +3,7 @@ from __future__ import annotations
 from ..shared import get_unique_names
 
 from deephaven.time import nanos_to_millis, diff_nanos
+from deephaven.table import Table
 
 
 def time_length(
@@ -25,6 +26,13 @@ def time_length(
 
 
 class TimePreprocesser:
+    """
+    Used to preprocess times for a gantt plot.
+
+    Attributes:
+        args: dict[str, str]: Figure creation args
+    """
+
     def __init__(self, args):
         self.args = args
 
@@ -32,19 +40,19 @@ class TimePreprocesser:
             self,
             tables,
             column=None
-    ):
+    ) -> tuple[Table, dict[str, str]]:
         """Preprocess frequency bar params into an appropriate table
         This just sums each value by count
 
         Args:
-          table: Table:
-            The table to pull data from
+          tables: Table:
+            The tables to process
           column: str:
-            The column that has counts applied
+            The column to process
 
         Returns:
-          tuple[Table, str, str]: A tuple containing
-            (the new table, the original column name, the name of the count column)
+          tuple[Table, dict[str, str]]: A tuple containing
+            (the new table, an update to make to the args)
 
         """
         x_start, x_end, y, table = self.args["x_start"], self.args["x_end"], self.args["y"], self.args["table"]
@@ -53,7 +61,6 @@ class TimePreprocesser:
 
         for table in tables:
             yield table.update_view([f"{x_start}",
-                                           f"{x_end}",
-                                           f"{x_diff} = time_length({x_start}, {x_end})",
-                                           f"{y}"]), {"x_diff": x_diff}
-
+                                     f"{x_end}",
+                                     f"{x_diff} = time_length({x_start}, {x_end})",
+                                     f"{y}"]), {"x_diff": x_diff}

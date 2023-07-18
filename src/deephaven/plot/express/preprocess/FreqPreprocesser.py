@@ -1,29 +1,39 @@
 from __future__ import annotations
 
+from typing import Any
+
+from deephaven.table import Table
+
 from .UnivariatePreprocesser import UnivariatePreprocesser
 from ..shared import get_unique_names
 
+
 class FreqPreprocesser(UnivariatePreprocesser):
-    def __init__(self, args):
+    """
+    A type of univariate preprocessor for frequency bar plots
+
+    Args:
+        args: dict[str, Any]: The figure creation args
+
+    """
+    def __init__(self, args: dict[str, Any]):
         super().__init__(args)
 
     def preprocess_partitioned_tables(
             self,
-            tables,
-            column=None
-    ):
+            tables: list[Table],
+            column: str = None
+    ) -> tuple[Table, dict[str, str]]:
         """Preprocess frequency bar params into an appropriate table
         This just sums each value by count
 
         Args:
-          table: Table:
-            The table to pull data from
-          column: str:
-            The column that has counts applied
+            tables: list[Table]: a list of tables to preprocess
+            column: the column to aggregate on
 
         Returns:
-          tuple[Table, str, str]: A tuple containing
-            (the new table, the original column name, the name of the count column)
+          tuple[Table, dict[str, str]]: A tuple containing
+            (the new table, an update to make to the args)
 
         """
         column = self.col_val if not column else column

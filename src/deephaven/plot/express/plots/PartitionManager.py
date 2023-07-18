@@ -1,4 +1,8 @@
 from __future__ import annotations
+
+from collections.abc import Generator, Callable
+from typing import Any
+
 import plotly.express as px
 
 from deephaven.table import Table, PartitionedTable
@@ -6,6 +10,7 @@ from deephaven import pandas as dhpd
 from deephaven import merge
 
 from ._layer import layer
+from .. import DeephavenFigure
 from ..preprocess.Preprocesser import Preprocesser
 from ..shared import get_unique_names
 
@@ -55,15 +60,13 @@ def get_partition_key_column_tuples(
 def numeric_column_set(
         table: Table,
 ) -> set[str]:
-    """Check if the provided column is numeric, check if it is in the provided cols,
-    then yield a tuple with the column name and associated null value.
+    """Gets the set of numeric columns in the table
 
     Args:
       table: Table: The table to pull columns from
-      cols: set[str]: The column set to check against
 
-    Yields:
-      tuple[str, str]: tuple of the form (column name, associated null value)
+    Returns:
+      set[str]: set of numeric columns
     """
     numeric_cols = set()
     for col in table.columns:
@@ -73,14 +76,61 @@ def numeric_column_set(
     return numeric_cols
 
 
+def is_single_numeric_col(
+        val: str | list[str],
+        numeric_cols: set[str]
+) -> bool:
+    """
+    Get whether the val is a single numeric column or not
+
+    Args:
+        val: str | list[str]
+        numeric_cols: set[str]
+
+    Returns:
+        bool: True if the column is a single numeric column, false otherwise
+    """
+    return (isinstance(val, str) or len(val) == 1) and val in numeric_cols
+
+
 class PartitionManager:
+    """
+    Handles all partitions for the given args
+
+    Attributes:
+        by_vars: set[str]: The set of by_vars that can be used in a plot by
+        list_var: str: "x" or "y" depending on which var is a list
+        cols: str | list: The columns set by the list_var
+        pivot_vars: dict[str, str]: A dictionary that stores the "real" column
+          names if there is a list_var. This is needed in case the column names
+          used are already in the table.
+        has_color: bool: True if this figure has user set color, False otherwise
+        facet_row: str: The facet row
+        facet_col: str: The facet col
+        (arg, col), (map, ls, new_col)
+        always_attached: dict[tuple[str, str],
+          tuple[dict[str, str], list[str], str]: The dict mapping the arg and column
+          to the style map, dictionary, and new column name, to be used for
+          AttachedProcessor when dealing with an "always_attached" plot
+        marginal_x: Type of marginal on the x-axis, if applicable
+        marginal_y: Type of marginal on the y-axis, if applicable
+        marg_args: dict[str, Any]: The dictionary of args to pass to marginals
+        attach_marginals: Callable: the function to use to attach marginals
+        marg_color: str | list[str]: The columns to pass to marginal creation
+        args: dict[str, Any]: Args used to create the plot
+        groups: set[str]:: The special groups that apply to this plot
+        preprocessor: Preprocessor: The preprocessor, used for some plot types
+        partitioned_table: PartitionedTable: The partitioned table created (or
+          passed in if already created)
+        draw_figure: Callable: The function used to draw the figure
+    """
     def __init__(
             self,
-            args,
-            draw_figure,
-            groups,
-            marg_args,
-            marg_func
+            args: dict[str, Any],
+            draw_figure: Callable,
+            groups: set[str],
+            marg_args: dict[str, any],
+            marg_func: Callable
     ):
 
         self.by_vars = None
@@ -101,12 +151,17 @@ class PartitionManager:
         self.args = args
         self.groups = groups
         self.preprocessor = None
-        self.set_pivot_variables()
+        self.set_long_mode_variables()
         self.convert_table_to_long_mode()
         self.partitioned_table = self.process_partitions()
         self.draw_figure = draw_figure
 
-    def set_pivot_variables(self):
+    def set_long_mode_variables(self) -> None:
+        """
+        If dealing with a "supports_lists" plot, set variables that will be
+        used to restructure the table
+
+        """
         if "supports_lists" not in self.groups:
             return
 
@@ -136,7 +191,12 @@ class PartitionManager:
 
     def convert_table_to_long_mode(
             self,
-    ):
+    ) -> None:
+        """
+        Convert a table to long mode if thie plot supports lists
+        If there is no by arg, the new column becomes it
+
+        """
         if "supports_lists" not in self.groups:
             return
 
@@ -147,25 +207,25 @@ class PartitionManager:
             # partitioned tables are assumed to already be properly formatted
             return
 
-
         # if there is no plot by arg, the variable column becomes it
         if not self.args.get("by", None):
             args["by"] = self.pivot_vars["variable"]
 
         args["table"] = self.to_long_mode(table, self.cols)
 
-    def is_single_numeric_col(
-            self,
-            val,
-            numeric_cols
-    ):
-        return (isinstance(val, str) or len(val) == 1) and val in numeric_cols
-
     def is_by(
             self,
-            arg,
-            map_val=None
-    ):
+            arg: str,
+            map_val: str | list[str] = None
+    ) -> None:
+        """
+        Given that the specific arg is a by arg, prepare the arg depending on
+        if it is attached or not
+
+        Args:
+            arg: The arg that is a by arg
+            map_val: The value of the map
+        """
         seq_arg = PARTITION_ARGS[arg][0]
         if not self.args[seq_arg]:
             self.args[seq_arg] = STYLE_DEFAULTS[arg]
@@ -189,9 +249,33 @@ class PartitionManager:
 
     def handle_plot_by_arg(
             self,
-            arg,
-            val
-    ):
+            arg: str,
+            val: str | list[str]
+    ) -> tuple[str, str | list[str]]:
+        """
+        Handle all args that are possibly plot bys.
+        If the "val" is none and the "by" arg is specified,
+        Otherwise, there are three cases, depending on the argument
+        1. If "color", a single numeric column creates a color axis. Otherwise
+        the columns are treated as columns to partition on
+        2. If "size", a single numeric column binds the markers to size. Otherwise
+        the columns are treated as columns to partition on.
+        3. If any other plot by arg, the columns are treated as columns to partition on.
+
+        These behaviors are adjusted by the appropriate map. If the map is "identity",
+        the values are bound directly to the marker (like size is by default).
+        If "by" or a tuple of ("by", dict) where the dict is the normal column
+        value to style dictionary, the argument is forced to a plot by,
+        regardless of column type.
+
+        Args:
+            arg: str: The argument
+            val: str | list[str]: The column or columns for the arguments
+
+        Returns:
+            tuple[str, str | list[str]]: A tuple of (f"{arg}_by", arg_by value)
+            to use to partition the table
+        """
         args = self.args
         table = args["table"]
         table = table if isinstance(table, Table) else table.constituent_tables[0]
@@ -207,7 +291,7 @@ class PartitionManager:
             elif map_ == "identity":
                 args.pop(map_name)
                 args["attached_color"] = args.pop("color")
-            elif val and self.is_single_numeric_col(val, numeric_cols) and "color_continuous_scale" in self.args:
+            elif val and is_single_numeric_col(val, numeric_cols) and "color_continuous_scale" in self.args:
                 if "always_attached" in self.groups:
                     args["colors"] = args.pop("color")
                 # just keep the argument in place so it can be passed to plotly
@@ -228,7 +312,7 @@ class PartitionManager:
             map_ = args["size_map"]
             if map_ == "by" or isinstance(map_, dict):
                 self.is_by(arg)
-            elif val and self.is_single_numeric_col(val, numeric_cols):
+            elif val and is_single_numeric_col(val, numeric_cols):
                 # just keep the argument in place so it can be passed to plotly
                 # express directly
                 pass
@@ -258,8 +342,19 @@ class PartitionManager:
 
     def process_partitions(
             self
-    ):
+    ) -> Table | PartitionedTable:
+        """
+        Process the partitions. This will pull the arguments that are plot bys
+        then combine them into a dictionary.
 
+        If the table is already partitioned, that is used as the partitioned
+        table, although the plot by columns are still pulled for styling.
+
+
+        Returns:
+            Table | PartitionedTable: the new table
+
+        """
         args = self.args
 
         partitioned_table = None
@@ -308,7 +403,7 @@ class PartitionManager:
                     sequence, map_ = PARTITION_ARGS[arg]
                     args[sequence] = {
                         "ls": args[sequence],
-                        "map": args[map_],
+                        "map_": args[map_],
                         "keys": keys
                     }
                     args.pop(arg_by)
@@ -321,7 +416,19 @@ class PartitionManager:
         args.pop("by_vars", None)
         return args["table"]
 
-    def build_ternary_chain(self, cols):
+    def build_ternary_chain(
+            self,
+            cols: list[str]
+    ) -> str:
+        """
+        Build a ternary chain that will collapse the columns into one
+
+        Args:
+            cols: list[str]: the list of columns to collapse into one column
+
+        Returns:
+            The ternary string that builds the new column
+        """
         ternary_string = f"{self.pivot_vars['value']} = "
         for i, col in enumerate(cols):
             if i == len(cols) - 1:
@@ -330,7 +437,24 @@ class PartitionManager:
                 ternary_string += f"{self.pivot_vars['variable']} == `{col}` ? {col} : "
         return ternary_string
 
-    def to_long_mode(self, table, cols):
+    def to_long_mode(
+            self,
+            table: Table,
+            cols: list[str]
+    ) -> Table:
+        """
+        Convert a table to long mode. This will take the name of the columns,
+        make a new "variable" column that contains the column names, and create
+        a new "value" column that contains the values.
+
+        Args:
+            table: Table: The table to convert to long mode
+            cols: cols: The columns to combine
+
+        Returns:
+            The table converted to long mode
+
+        """
         new_tables = []
         for col in cols:
             new_tables.append(table.update_view(f"{self.pivot_vars['variable']} = `{col}`"))
@@ -341,7 +465,14 @@ class PartitionManager:
 
         return transposed.drop_columns(cols)
 
-    def current_partition_generator(self):
+    def current_partition_generator(self) -> Generator[dict[str, str]]:
+        """
+        Generate a partition dictionary for the current partition that maps
+        column to value
+
+        Yields:
+            dict[str, str]: The partition dictionary mapping column to value
+        """
         for table in self.partitioned_table.constituent_tables:
             key_column_table = dhpd.to_pandas(table.select_distinct(self.partitioned_table.key_columns))
             current_partition = dict(zip(
@@ -351,14 +482,29 @@ class PartitionManager:
             ))
             yield current_partition
 
-    def table_partition_generator(self):
+    def table_partition_generator(self) -> Generator[tuple[Table, dict[str, str]]]:
+        """
+        Generates a tuple of (table, current partition). The table is the possibly
+        preprocessed partition of the current_partition
+
+        Yields:
+            tuple[Table, dict[str, str]: The tuple of table and current partition
+
+        """
         constituents = self.partitioned_table.constituent_tables
         column = self.pivot_vars["value"] if self.pivot_vars else None
         tables = self.preprocessor.preprocess_partitioned_tables(constituents, column)
         for table, current_partition in zip(tables, self.current_partition_generator()):
             yield table, current_partition
 
-    def partition_generator(self):
+    def partition_generator(self) -> Generator[dict[str, Any]]:
+        """
+        Generates args that can be used to create one layer of a partitioned
+        figure.
+
+        Yields:
+            dict[str, Any]: The args used to create a figure
+        """
         args, partitioned_table = self.args, self.partitioned_table
         if hasattr(partitioned_table, "constituent_tables"):
             for table, current_partition in self.table_partition_generator():
@@ -383,7 +529,14 @@ class PartitionManager:
         else:
             yield args
 
-    def create_figure(self):
+    def create_figure(self) -> DeephavenFigure:
+        """
+        Create a figure. This handles layering different partitions as necessary as well
+        as any special preprocessing or postprocessing needed for different types of plots
+
+        Returns:
+            DeephavenFigure: The new figure
+        """
         trace_generator = None
         figs = []
         for i, args in enumerate(self.partition_generator()):

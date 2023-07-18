@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from copy import deepcopy
 from functools import partial
-from collections.abc import Generator, Callable
+from collections.abc import Callable
+from typing import Any
 
 import plotly.express as px
 
@@ -12,7 +12,6 @@ from ._layer import layer
 from .PartitionManager import PartitionManager
 from ._update_wrapper import unsafe_figure_update_wrapper
 from ..deephaven_figure import generate_figure, DeephavenFigure
-from ..shared import get_unique_names
 from ._update_wrapper import default_callback
 
 
@@ -42,175 +41,17 @@ def remap_scene_args(
         args[arg + '_scene'] = args.pop(arg)
 
 
-def preprocessed_fig(
-        draw: callable,
-        keys: list[str],
-        args: dict[str, any],
-        is_list: bool,
-        trace_generator: Generator[dict[str, any]],
-        col: str | list[str],
-        preprocesser: callable = None,
-        table: Table = None,
-        preprocessed_args: tuple[Table, str, list[str]] = None
-) -> DeephavenFigure:
-    """Preprocess and return a figure
-    Either both preprocesser and table or just preprocessed_table should be
-    specified
-
-    Args:
-      draw: callable: A draw function, generally from plotly express
-      keys: list[str]: A list of the variables to assign the preprocessed
-        results to
-      args: The args to pass to figure creation
-      is_list: bool: True if the current column is one of a list
-      trace_generator: Generator[dict[str, any]]: The trace generator to use
-        to pass to generate_figure
-      col: str | list[str]: The columns that are being plotted
-      preprocesser: callable: (Default value = None)
-        A function that returns a tuple that contains
-        (new table, first data columnn, second data column)
-      table: Table: The table to use
-      preprocessed_args: tuple[Table, str, list[str]]:  (Default value = None)
-        If the data was already preprocessed, use that tuple of data instead
-
-    Returns:
-      DeephavenFigure: The resulting DeephavenFigure
-
-    """
-    # if preprocessed args are specified, the table is created,
-    # but the list of columns (the last of the preprocessed args)
-    # needs to be overriden with the current column
-    if preprocessed_args:
-        output = preprocessed_args
-        output = [output[0], output[1], col]
-    else:
-        output = preprocesser(table, col)
-
-    for k, v in zip(keys, output):
-        args[k] = v
-
-    if is_list:
-        # the col is needed for proper hover text, but only if
-        # there's a list
-        args["current_col"] = col
-
-    return generate_figure(
-        draw=draw,
-        call_args=args,
-        trace_generator=trace_generator,
-    )
-
-
-def preprocess_and_layer(
-        preprocesser: callable,
-        draw: callable,
-        args: dict[str, any],
-        var: str,
-        orientation: str = None,
-        is_hist: bool = False,
-) -> DeephavenFigure:
-    """Given a preprocessing function, a draw function, and several
-    columns, layer up the resulting figures
-
-    Args:
-      preprocesser: callable: A function that takes a table, list of cols
-        and returns a tuple that contains
-        (new table, first data columnn, second data column)
-      draw: callable: A draw function, generally from plotly express
-      args: dict[str, any]: The args to pass to figure creation
-      var: str: Which var to map to the first column. If "x", then the
-        preprocessor output is mapped to table, x, y. If "y" then preprocessor
-        output is mapped to table, y, x.
-      orientation: str:  (Default value = None)
-        optional orientation if it is needed
-      is_hist: bool:  (Default value = False)
-        If true, the figure is a histogram and requires custom
-
-    Returns:
-      DeephavenFigure: The resulting DeephavenFigure
-
-    """
-
-    cols = args[var]
-    # to mirror px, list_var_axis_name and legend should only be used when cols
-    # are a list (regardless of length)
-    is_list = isinstance(cols, list)
-    cols = cols if is_list else [cols]
-    keys = ["table", "x", "y"] if var == "x" else ["table", "y", "x"]
-    table = args["table"]
-    figs = []
-    trace_generator = None
-    has_color = None
-
-    # the var is needed for proper hover text
-    args["current_var"] = var
-
-    if not args.get("color_discrete_sequence_marker"):
-        # the colors need to match the plotly qualitative colors so they can be
-        # overriden, but has_color should be false as the color was not
-        # specified by the user
-        has_color = False
-        args["color_discrete_sequence_marker"] = px.colors.qualitative.Plotly
-
-    if orientation:
-        args["orientation"] = orientation
-
-    if is_hist:
-        # histograms generate one table with all info
-        create_fig = partial(
-            preprocessed_fig,
-            preprocessed_args=preprocesser(table, cols)
-        )
-    else:
-        # pivot vars need to be calculated here to be shared between layers
-        args["pivot_vars"] = get_unique_names(table, ["variable", "value"])
-
-        create_fig = partial(
-            preprocessed_fig,
-            preprocesser=preprocesser,
-            table=table
-        )
-
-    for i, col in enumerate(cols):
-
-        new_fig = create_fig(draw, keys, args, is_list, trace_generator, col)
-        # offsetgroup is needed mostly to prevent spacing issues in
-        # marginals
-        # not setting the offsetgroup and having both marginals set to box,
-        # violin, etc. leads to extra spacing in each marginal
-        # offsetgroup needs to be unique within the subchart as columns
-        # could have the same name
-        new_fig.fig.update_traces(offsetgroup=f"{col}{i}")
-        figs.append(new_fig)
-
-        if not trace_generator:
-            trace_generator = figs[0].trace_generator
-
-    layered = layer(*figs, which_layout=0)
-
-    if has_color is False:
-        layered.has_color = False
-
-    if is_list:
-        layered.fig.update_layout(legend_tracegroupgap=0)
-    else:
-        layered.fig.update_layout(showlegend=False)
-
-    return layered
-
-
 def calculate_mode(
         base_mode: str,
-        args: dict[str, any]
+        args: dict[str, Any]
 ) -> str:
     """Calculate the mode of the traces based on the arguments
 
     Args:
-      base_mode: The mode that this trace definitely has, either lines or markers
-      args: The args to use to figure out the mode
-      base_mode: str: 
-      args: dict[str: 
-      any]: 
+      base_mode: str: The mode that this trace definitely has, either lines or markers
+      args: dict[str, Any]: The args to use to figure out the mode
+      base_mode: str:
+      args: dict[str, Any]:
 
     Returns:
       The mode. Some combination of markers, lines, text, joined by '+'.
@@ -221,7 +62,14 @@ def calculate_mode(
         args.get("markers", None),
         args.get("symbol", None),
         args.get("symbol_sequence", None),
-        args.get("text", None)]
+        args.get("symbol_map", None),
+        args.get("text", None),
+        args.get("size", None),
+        args.get("size_sequence", None),
+        args.get("size_map", None),
+        "symbol" in args.get("by_vars", []),
+        "size" in args.get("by_vars", []),
+    ]
     ):
         modes.append("markers")
     if args.get("text", None):
@@ -230,24 +78,32 @@ def calculate_mode(
 
 
 def append_suffixes(
-        args,
-        prefixes,
-        sync_dict
+        args: list[str],
+        suffixes: list[str],
+        sync_dict: SyncDict
 ):
+    """
+    Append the suffixes in the list to the specified arg names. The args should be in sync_dict.
+
+    Args:
+        args: list[str]: The args in sync_dict to rename
+        suffixes: list[str]: The suffixes to add to the specified args
+        sync_dict: SyncDict: The SyncDict that the args are in
+    """
     for arg in args:
-        for prefix in prefixes:
-            if arg in sync_dict.d:
-                sync_dict.d[f"{arg}_{prefix}"] = sync_dict.will_pop(arg)
+        for suffix in suffixes:
+            if arg in sync_dict:
+                sync_dict.d[f"{arg}_{suffix}"] = sync_dict.will_pop(arg)
 
 
 def apply_args_groups(
-        args: dict[str, any],
+        args: dict[str, Any],
         groups: set[str]
 ) -> None:
     """Transform args depending on groups
 
     Args:
-      args: dict[str, any]: A dictionary of args to transform
+      args: dict[str, Any]: A dictionary of args to transform
       groups: set[str]: A set of groups used to transform the args
 
     """
@@ -326,29 +182,29 @@ def apply_args_groups(
 
 
 def process_args(
-        args: dict[str, any],
+        args: dict[str, Any],
         groups: set[str] = None,
-        add: dict[str, any] = None,
+        add: dict[str, Any] = None,
         pop: list[str] = None,
         remap: dict[str, str] = None,
         px_func=Callable
 ) -> DeephavenFigure:
-
     """Process the provided args
 
     Args:
-      args: dict[str, any]: A dictionary of args to process
+      args: dict[str, Any]: A dictionary of args to process
       groups: set[str]:  (Default value = None)
         A set of groups that apply transformations to the args
-      add: dict[str, any] (Default value = None)
+      add: dict[str, Any] (Default value = None)
         A dictionary to add to the args
       pop: list[str]:  (Default value = None)
         A list of keys to remove from the args
       remap: dict[str, str]:  (Default value = None)
         A dictionary mapping of keys to keys
+      px_func: Callable: the function (generally from px) to use to create the figure
 
     Returns:
-      partial: The update wrapper, based on the update function in the args
+      partial: The new figure
 
     """
     validate_common_args(args)
@@ -402,10 +258,13 @@ class SyncDict:
         self.d = d
         self.pop_set = set()
 
+    def __contains__(self, item):
+        return item in self.d
+
     def will_pop(
             self,
-            key: any
-    ) -> any:
+            key: Any
+    ) -> Any:
         """Add a key to the set of keys that will eventually be popped
 
         Args:
@@ -428,15 +287,31 @@ class SyncDict:
         for k in self.pop_set:
             self.d.pop(k)
 
-def set_shared_defaults(args):
+
+def set_shared_defaults(args: dict[str, Any]):
+    """
+    Set shared defaults amongst distribution figures
+
+    Args:
+        args: dict[str, str]: The args to set the shared defaults on
+    """
     args["by_vars"] = args.get("by_vars", ("color",))
     args["unsafe_update_figure"] = args.get("unsafe_update_figure", default_callback)
     args["x"] = args.get("x", None)
     args["y"] = args.get("y", None)
 
+
 def shared_violin(
-        **args
+        **args: Any
 ) -> DeephavenFigure:
+    """
+
+    Args:
+        **args: Any: The args used for the figure
+
+    Returns:
+        The DeephavenFigure created
+    """
     set_shared_defaults(args)
     args["violinmode"] = args.get("violinmode", "group")
     args["points"] = args.get("points", "outliers")
@@ -444,8 +319,16 @@ def shared_violin(
 
 
 def shared_box(
-        **args
+        **args: Any
 ) -> DeephavenFigure:
+    """
+
+    Args:
+        **args: Any: The args used for the figure
+
+    Returns:
+        The DeephavenFigure created
+    """
     set_shared_defaults(args)
     args["boxmode"] = args.get("boxmode", "group")
     args["points"] = args.get("points", "outliers")
@@ -453,16 +336,32 @@ def shared_box(
 
 
 def shared_strip(
-        **args
+        **args: Any
 ) -> DeephavenFigure:
+    """
+
+    Args:
+        **args: Any: The args used for the figure
+
+    Returns:
+        The DeephavenFigure created
+    """
     set_shared_defaults(args)
     args["stripmode"] = args.get("stripmode", "group")
     return process_args(args, {"marker", "preprocess_violin", "supports_lists"}, px_func=px.strip)
 
 
 def shared_histogram(
-        **args
+        **args: Any
 ) -> DeephavenFigure:
+    """
+
+    Args:
+        **args: Any: The args used for the figure
+
+    Returns:
+        The DeephavenFigure created
+    """
     set_shared_defaults(args)
     args["barmode"] = args.get("barmode", "relative")
     args["nbins"] = args.get("nbins", 10)
@@ -479,9 +378,10 @@ def shared_histogram(
         args, {"bar", "preprocess_hist", "supports_lists"}, px_func=px.bar
     )
 
+
 def marginal_axis_update(
         matches: str = None
-) -> dict[str, any]:
+) -> dict[str, Any]:
     """Create an update to a marginal axis so it hides much of the axis info
 
     Args:
@@ -489,7 +389,7 @@ def marginal_axis_update(
         An optional axis, such as x, y, x2 to match this axis to
 
     Returns:
-      dict[str, any]: The update
+      dict[str, Any]: The update
 
     """
     return {
@@ -504,15 +404,14 @@ def marginal_axis_update(
 
 def create_marginal(
         marginal: str,
-        args: dict[str, any],
+        args: dict[str, Any],
         which: str
 ) -> DeephavenFigure:
     """Create a marginal figure
 
     Args:
       marginal: str: The type of marginal; histogram, violin, rug, box
-      args: dict[str, any] The args to pass to the marginal function
-      style: dict[str, any] The style args to pass to the marginal function
+      args: dict[str, Any] The args to pass to the marginal function
       which: str: x or y depending on which marginal is being drawn
 
     Returns:
@@ -540,7 +439,7 @@ def create_marginal(
 
 def attach_marginals(
         fig: DeephavenFigure,
-        args: dict[str, any],
+        args: dict[str, Any],
         marginal_x: str = None,
         marginal_y: str = None
 ) -> DeephavenFigure:
@@ -548,7 +447,7 @@ def attach_marginals(
 
     Args:
       fig: DeephavenFigure: The figure to attach marginals to
-      args: dict[str, any]: The data args to use
+      args: dict[str, Any]: The data args to use
       marginal_x: str:  (Default value = None)
         The type of marginal; histogram, violin, rug, box
       marginal_y: str:  (Default value = None)
@@ -612,15 +511,15 @@ def attach_marginals(
 
 
 def get_marg_args(
-        args: dict[str, any]
-) -> dict[str, any]:
+        args: dict[str, Any]
+) -> dict[str, Any]:
     """Copy the required args into data and style for marginal creation
 
     Args:
-      args: dict[str, any]: The args to split
+      args: dict[str, Any]: The args to split
 
     Returns:
-      tuple[dict[str, any], dict[str, any]]: A tuple of
+      tuple[dict[str, Any], dict[str, Any]]: A tuple of
         (data args dict, style args dict)
 
     """

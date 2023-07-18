@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from typing import Any
+
 from deephaven import agg, empty_table, new_table
-from deephaven.table import PartitionedTable
+from deephaven.table import PartitionedTable, Table
 
 from .UnivariatePreprocesser import UnivariatePreprocesser
 from ..shared import get_unique_names
@@ -9,7 +11,6 @@ from deephaven.column import long_col
 from deephaven.updateby import cum_sum
 
 # Used to aggregate within histogram bins
-
 HISTFUNC_MAP = {
     'avg': agg.avg,
     'count': agg.count_,
@@ -21,6 +22,7 @@ HISTFUNC_MAP = {
     'sum': agg.sum_,
     'var': agg.var
 }
+
 
 def get_aggs(
         base: str,
@@ -44,8 +46,27 @@ def get_aggs(
     return ([f"{base}{column}={column}" for column in columns],
             ', '.join([f"{base}{column}" for column in columns]))
 
+
 class HistPreprocesser(UnivariatePreprocesser):
-    def __init__(self, args, pivot_vars):
+    """
+    Preprocessor for histograms.
+
+    Attributes:
+        range_table: Table: The range table, calculated over the whole original
+            table
+        names: dict[str, str]: A mapping of ideal name to unique names
+        nbins: int: the number of bins in the histogram
+        range_bins: list[Number, Number]: The range the bins are created over
+        histfunc: str: The histfunc to create the histogram with
+        barnorm: str: The barnorm to create the histogram with
+        histnorm: str: The histnorm to create the histogram with
+        cumulative: bool: If truek, the bins are cumulative
+    """
+    def __init__(
+            self,
+            args: dict[str, Any],
+            pivot_vars: dict[str, str]
+    ):
         super().__init__(args, pivot_vars)
         self.range_table = None
         self.names = None
@@ -57,31 +78,18 @@ class HistPreprocesser(UnivariatePreprocesser):
         self.cumulative = args.pop("cumulative")
         self.prepare_preprocess()
 
-    def prepare_preprocess(self, ):
+    def prepare_preprocess(self):
+        """
+        Prepare for preprocessing by creating a range table over all values
+
+        """
         self.names = get_unique_names(self.args["table"], ["range_index", "range",
-                                         "bin_min", "bin_max",
-                                         self.histfunc, "total"])
+                                                           "bin_min", "bin_max",
+                                                           self.histfunc, "total"])
         self.range_table = self.create_range_table()
 
     def create_range_table(self):
         """Create a table that contains the bin ranges
-
-        Args:
-          table: Table:
-            The table to pull data from
-          columns: list[str]
-            A list of columns to create histograms over
-          nbins: int: (Default value = 10)
-            The number of bins, shared between all histograms
-          range_bins: list[int]:  (Default value = None)
-            The range that the bins are drawn over. If none, the range
-            will be over all data
-          range_: str:
-            The name of the range column. Generally "range"
-
-        Returns:
-          A new table that contains a range object in a Range column
-
         """
         # partitioned tables need range calculated on all
         table = self.table.merge() if isinstance(self.table, PartitionedTable) else self.table
@@ -104,7 +112,18 @@ class HistPreprocesser(UnivariatePreprocesser):
             f"DiscretizedRangeEqual({range_min},{range_max}, "
             f"{self.nbins})").view(self.names['range'])
 
-    def create_count_tables(self, tables, column):
+    def create_count_tables(
+            self,
+            tables: list[Table],
+            column: str = None
+    ) -> tuple[Table, dict[str, str]]:
+        """
+        Create count tables that aggregate up values.
+
+        Args:
+            tables: list[Table]: List of tables to create counts for
+            column: str: the column used
+        """
         range_index, range_ = self.names['range_index'], self.names['range']
         agg_func = HISTFUNC_MAP[self.histfunc]
         for i, table in enumerate(tables):
@@ -119,8 +138,13 @@ class HistPreprocesser(UnivariatePreprocesser):
                 .agg_by([agg_func(tmp_col)], range_index)
             yield count_table, tmp_col
 
-
-    def preprocess_partitioned_tables(self, tables, column=None):
+    def preprocess_partitioned_tables(
+            self,
+            tables: list[Table],
+            column: str = None
+    ) -> tuple[Table, dict[str, str]]:
+        """Preprocess tables into histogram tables
+        """
         # column will only be set if there's a pivot var, which means the table has been restructured
         column = self.col_val if not column else column
 
@@ -192,4 +216,3 @@ class HistPreprocesser(UnivariatePreprocesser):
             yield bin_counts.view([var_axis_name, f"{column} = {count_col}"]), {
                 self.var: var_axis_name, self.other_var: column
             }
-
