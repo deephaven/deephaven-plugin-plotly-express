@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from ..shared import get_unique_names
 
 from deephaven.time import nanos_to_millis, diff_nanos
@@ -33,13 +35,13 @@ class TimePreprocesser:
         args: dict[str, str]: Figure creation args
     """
 
-    def __init__(self, args):
+    def __init__(self, args: dict[str, Any]):
         self.args = args
 
     def preprocess_partitioned_tables(
             self,
-            tables,
-            column=None
+            tables: list[Table],
+            column: str = None
     ) -> tuple[Table, dict[str, str]]:
         """Preprocess frequency bar params into an appropriate table
         This just sums each value by count

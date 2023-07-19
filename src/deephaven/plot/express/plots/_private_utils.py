@@ -81,7 +81,7 @@ def append_suffixes(
         args: list[str],
         suffixes: list[str],
         sync_dict: SyncDict
-):
+) -> None:
     """
     Append the suffixes in the list to the specified arg names. The args should be in sync_dict.
 
@@ -288,7 +288,7 @@ class SyncDict:
             self.d.pop(k)
 
 
-def set_shared_defaults(args: dict[str, Any]):
+def set_shared_defaults(args: dict[str, Any]) -> None:
     """
     Set shared defaults amongst distribution figures
 

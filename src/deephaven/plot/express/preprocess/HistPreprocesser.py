@@ -78,7 +78,7 @@ class HistPreprocesser(UnivariatePreprocesser):
         self.cumulative = args.pop("cumulative")
         self.prepare_preprocess()
 
-    def prepare_preprocess(self):
+    def prepare_preprocess(self) -> None:
         """
         Prepare for preprocessing by creating a range table over all values
 
@@ -88,7 +88,7 @@ class HistPreprocesser(UnivariatePreprocesser):
                                                            self.histfunc, "total"])
         self.range_table = self.create_range_table()
 
-    def create_range_table(self):
+    def create_range_table(self) -> Table:
         """Create a table that contains the bin ranges
         """
         # partitioned tables need range calculated on all

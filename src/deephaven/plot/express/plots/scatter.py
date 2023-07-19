@@ -264,7 +264,6 @@ def scatter_3d(
         range_z: list[int] = None,
         title: str = None,
         template: str = None,
-        render_mode: str = "webgl",
         unsafe_update_figure: callable = default_callback
 ) -> DeephavenFigure:
     """Returns a 3D scatter chart
@@ -397,10 +396,6 @@ def scatter_3d(
         The title of the chart
       template: str:  (Default value = None)
         The template for the chart.
-      render_mode: str (Default value = "webgl")
-        Either "svg" or "webgl". The default is "webgl" as it leads to a more
-        performant plot but there may be graphical bugs, in which case it is
-        recommended to switch to "svg"
       unsafe_update_figure:  callable:  (Default value = default_callback)
         An update function that takes a plotly figure
         as an argument and optionally returns a plotly figure. If a figure is
