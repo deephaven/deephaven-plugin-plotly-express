@@ -406,8 +406,6 @@ class PartitionManager:
         # preprocessor needs to be initialized after the always attached arguments are found
         self.preprocessor = Preprocesser(args, self.groups, self.always_attached, self.pivot_vars)
 
-        # if pivot vars are set, the table needs to be partitioned even if
-        # no styled partition_cols are found
         if partition_cols:
             if not partitioned_table:
                 partitioned_table = args["table"].partition_by(list(partition_cols))
