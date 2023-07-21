@@ -1,0 +1,34 @@
+# pydoc-markdown
+# find ./docs/ -name "*.md" -type f  -exec blacken-docs {} --skip-errors \;
+
+loaders:
+  - type: python
+    search_path: [src/deephaven/plot/]
+processors:
+  - type: filter
+    skip_empty_modules: true
+  - type: smart
+  - type: crossref
+renderer:
+  type: docusaurus
+  markdown:
+    escape_html_in_docstring: false
+    code_headers: false
+    code_lang: false
+    use_fixed_header_levels: true
+    header_level_by_type:
+      Module: 2
+      Class: 2
+      Method: 2
+      Function: 2
+      Data: 2
+    source_linker:
+      type: github
+      repo: deephaven/deephaven-plugin-plotly-express
+      use_branch: true
+    source_format: "[View source on Github]({url})"
+  docs_base_path: .
+  relative_output_path: docs
+  relative_sidebar_path: sidebar.json
+  sidebar_top_level_label: 'Plotting'
+

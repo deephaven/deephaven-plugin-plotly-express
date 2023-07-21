@@ -1,0 +1,68 @@
+{
+  "items": [
+    {
+      "items": [
+        {
+          "items": [
+            "docs/express/data/data_generators"
+          ],
+          "label": "express.data",
+          "type": "category"
+        },
+        {
+          "items": [
+            "docs/express/data_mapping/DataMapping",
+            "docs/express/data_mapping/data_mapping",
+            "docs/express/data_mapping/json_conversion"
+          ],
+          "label": "express.data_mapping",
+          "type": "category"
+        },
+        {
+          "items": [
+            "docs/express/deephaven_figure/DeephavenFigure",
+            "docs/express/deephaven_figure/custom_draw",
+            "docs/express/deephaven_figure/generate"
+          ],
+          "label": "express.deephaven_figure",
+          "type": "category"
+        },
+        {
+          "items": [
+            "docs/express/plots/_private_utils",
+            "docs/express/plots/area",
+            "docs/express/plots/bar",
+            "docs/express/plots/distribution",
+            "docs/express/plots/financial",
+            "docs/express/plots/hierarchial",
+            "docs/express/plots/line",
+            "docs/express/plots/pie",
+            "docs/express/plots/scatter",
+            "docs/express/plots/subplots"
+          ],
+          "label": "express.plots",
+          "type": "category"
+        },
+        {
+          "items": [
+            "docs/express/preprocess/preprocess"
+          ],
+          "label": "express.preprocess",
+          "type": "category"
+        },
+        {
+          "items": [
+            "docs/express/shared/shared"
+          ],
+          "label": "express.shared",
+          "type": "category"
+        },
+        "docs/express/__init__"
+      ],
+      "label": "express",
+      "type": "category"
+    }
+  ],
+  "label": "Plotting",
+  "type": "category"
+}
