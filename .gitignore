@@ -6,3 +6,5 @@ dist/
 .idea
 .DS_store
 __pycache__/
+
+docs/source/code/
