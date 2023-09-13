@@ -1,4 +1,6 @@
-# Deephaven Plugin for Charts
+# DEPRECATED
+
+Please use the monorepo at https://github.com/deephaven/deephaven-plugins
 
 Custom implementation built on top of plotly express to make it compatible with deephaven tables.
 
